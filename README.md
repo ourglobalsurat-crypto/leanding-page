@@ -10,6 +10,7 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Large tap targets, path-aware progress, validation, consent, and a WhatsApp fallback
 - UTM, source, campaign, referrer, language, and questionnaire-version capture
 - Receipt-gated conversion page at `/thank-you` after a lead is successfully stored
+- Google Tag Manager container `GTM-W44W95MN` on every route, with a CSP allowlist for it
 - Deduplicated `dataLayer` and Meta Pixel lead-event hooks with an opaque event ID
 - Authenticated admin dashboard at `/admin`
 - Lead search, filters, status management, notes, detail view, and CSV export
@@ -83,7 +84,17 @@ For tag-manager integrations, the page queues this event after receipt verificat
 }
 ```
 
-If a global Meta Pixel `fbq` function is present, the page also sends a Meta `Lead` event with the same event ID. A session marker prevents repeat emission when the visitor refreshes the page. This repository does not embed a third-party tracking ID or vendor script; install those separately and allow only the required vendor domains in the Content Security Policy. Do not place access tokens, private keys, database credentials, phone numbers, names, or other lead data in analytics events.
+If a global Meta Pixel `fbq` function is present, the page also sends a Meta `Lead` event with the same event ID. A session marker prevents repeat emission when the visitor refreshes the page. Do not place access tokens, private keys, database credentials, phone numbers, names, or other lead data in analytics events.
+
+### Google Tag Manager
+
+Container `GTM-W44W95MN` loads on every route from the root layout in `src/app/layout.tsx`, using `next/script` with the `afterInteractive` strategy and the standard `<noscript>` iframe as the first element in `<body>`. The container ID is a public value and is hardcoded; change `GTM_CONTAINER_ID` in that file to point at a different container.
+
+Because GTM loads after hydration, the `generate_lead` push above can land in `dataLayer` before the container initializes. That is safe: `dataLayer` is a queue, and GTM processes everything already in it on startup.
+
+The Content Security Policy in `next.config.ts` allowlists only the Google origins GTM and GA4 need (`gtmScriptSrc`, `gtmImgSrc`, `gtmConnectSrc`, `gtmFrameSrc`). **Any other vendor tag added inside the container — Meta Pixel, Google Ads remarketing, a chat widget — will be blocked silently until its domains are added to those constants.** After publishing a new tag, check the browser console for CSP violations.
+
+GTM Preview and Tag Assistant frame the site, so they are blocked by `frame-ancestors 'none'` and `X-Frame-Options: DENY`. Relax those two headers temporarily if you need to debug the container in a deployed environment, and restore them afterwards.
 
 ## Verification
 
