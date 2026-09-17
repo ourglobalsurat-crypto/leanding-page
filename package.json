@@ -13,7 +13,8 @@
     "db:publish-branching-form": "tsx scripts/publish-branching-questionnaire.ts",
     "db:migrate-encrypt-leads": "tsx scripts/migrate-encrypt-leads.ts",
     "test:lead-crypto": "tsx scripts/test-lead-crypto.ts",
-    "qa:e2e": "node scripts/qa.mjs"
+    "qa:e2e": "node scripts/qa.mjs",
+    "test:export-unlock": "tsx scripts/test-export-unlock.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

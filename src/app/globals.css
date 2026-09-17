@@ -3844,3 +3844,107 @@ html[lang^="hi"] .site-shell :is(
     font-size: 16px;
   }
 }
+
+/* Lead export dialog */
+.export-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(23, 23, 19, 0.45);
+}
+
+.export-dialog {
+  width: 100%;
+  max-width: 440px;
+  background: var(--white);
+  border: 1px solid #d7d8d2;
+  border-radius: 13px;
+  box-shadow: 0 18px 44px rgba(23, 23, 19, 0.18);
+}
+
+.export-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 20px;
+  border-bottom: 1px solid #e0e0db;
+}
+
+.export-dialog > header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.export-dialog > header button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #6b6c64;
+  cursor: pointer;
+}
+
+.export-dialog > header button:hover {
+  background: #f1f1ed;
+}
+
+.export-dialog form {
+  padding: 20px;
+}
+
+.export-dialog label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.export-dialog textarea {
+  width: 100%;
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 0.93rem;
+  color: inherit;
+  background: var(--white);
+  border: 1px solid #d0d1cb;
+  border-radius: 9px;
+  resize: vertical;
+}
+
+.export-dialog textarea:focus {
+  outline: 2px solid var(--ink, #171713);
+  outline-offset: 1px;
+}
+
+.export-dialog small {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.79rem;
+  color: #6b6c64;
+}
+
+.export-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+@media (max-width: 480px) {
+  .export-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .export-dialog-actions .admin-button {
+    justify-content: center;
+    width: 100%;
+  }
+}

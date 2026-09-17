@@ -1,6 +1,7 @@
-import { ArrowRight, Download, Search, Users } from "lucide-react";
+import { ArrowRight, Search, Users } from "lucide-react";
 import Link from "next/link";
 
+import { LeadExportDialog } from "@/components/lead-export-dialog";
 import { LeadStatusControl } from "@/components/lead-status-control";
 import { getLeads } from "@/lib/admin-data";
 import { leadStatuses } from "@/lib/types";
@@ -24,7 +25,7 @@ export default async function LeadsPage({
     <main className="admin-page">
       <div className="admin-page-heading">
         <div><span className="admin-page-kicker">LEAD MANAGEMENT</span><h1>All leads</h1><p>Search, qualify and follow up with every landing-page enquiry.</p></div>
-        <Link className="admin-button secondary" href="/api/admin/leads/export" prefetch={false}><Download size={17} /> Export CSV</Link>
+        <LeadExportDialog />
       </div>
 
       <form className="lead-filters" method="get">

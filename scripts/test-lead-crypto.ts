@@ -168,3 +168,7 @@ console.log("\nAll lead-crypto checks passed.");
 }
 
 main();
+
+// Marks this file as a module so its top-level names stay local to it
+// rather than colliding with the other standalone test scripts.
+export {};

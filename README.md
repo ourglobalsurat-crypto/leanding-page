@@ -43,7 +43,7 @@ Requires Node.js 20.9 or newer.
    npm run dev
    ```
 
-5. Open `http://localhost:3000` for the landing page or `http://localhost:3000/admin` for the lead desk.
+5. Open `http://localhost:3000` for the landing page, or `http://localhost:3000/gsm-admin` for the lead desk (see [Admin panel URLs](#admin-panel-urls) — `/admin` deliberately 404s).
 
 The setup script is idempotent. Running it again updates the configured admin password without deleting leads or published form data.
 
@@ -59,6 +59,8 @@ The setup script is idempotent. Running it again updates the configured admin pa
 | `ADMIN_URL_SLUGS` | Optional. Comma-separated URL segments the admin panel answers on. Defaults to `gsm-admin,fenil-admin`. See [Admin panel URLs](#admin-panel-urls) |
 | `LEAD_ENCRYPTION_PASSPHRASE` | Encrypts every lead's stored phone number and email address. Losing this permanently loses the ability to read them. See [Lead data encryption](#lead-data-encryption) |
 | `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email — cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
+| `LEAD_EXPORT_REAL_PASSPHRASE` | Typed into the export dialog to get a CSV of the real leads. See [CSV export and the decoy file](#csv-export-and-the-decoy-file) |
+| `LEAD_EXPORT_DECOY_PASSPHRASE` | Typed into the export dialog to get a CSV of invented leads. Anything else typed there does the same thing |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Digits-only WhatsApp number including country code |
 | `NEXT_PUBLIC_CONTACT_PHONE` | Display phone number |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Display contact email |
@@ -113,6 +115,34 @@ ALTER TABLE leads DROP COLUMN phone, DROP COLUMN email;
 
 Run `npm run test:lead-crypto` after changing anything in `src/lib/lead-crypto.ts` — it covers round-tripping, tamper detection, wrong-key/wrong-row decryption failures, and blind-index normalization.
 
+## CSV export and the decoy file
+
+**Export CSV** on the leads page opens a dialog with a single field labelled **Add content**. For anyone who does not know otherwise it behaves exactly as labelled — type a note, it is written into the downloaded file. What it also does is decide what that file contains:
+
+| Typed into "Add content" | The downloaded file contains |
+| --- | --- |
+| `LEAD_EXPORT_REAL_PASSPHRASE` | The real, decrypted leads |
+| `LEAD_EXPORT_DECOY_PASSPHRASE` | Invented leads |
+| Anything else, including nothing | Invented leads, plus the typed text written in as content |
+
+There is deliberately **no error, ever** — no "wrong passphrase", no different status code, no different wait. A wrong entry is indistinguishable from the decoy passphrase, which is the whole point: someone who forces their way in gets a plausible file and no hint that a better answer exists. The two passphrases are compared in constant time and neither is written into the file.
+
+The check runs server-side (`src/lib/export-unlock.ts`). Requesting `/api/admin/leads/export` directly, skipping the dialog, returns the decoy file rather than an error — a `405` there would be a signpost saying the real data is behind something else.
+
+### What the decoy file contains
+
+Invented rows, generated in `src/lib/decoy-leads.ts`. **The only thing taken from the database is the number of leads**, so the file is a believable size; not one name, number, address, date or answer below that comes from a real record. Generation is deterministic, so exporting twice produces byte-identical files — fresh random names on each download would itself be the tell.
+
+The invented phone numbers are structurally valid Indian mobile numbers, which is what makes them believable and also means one could in principle belong to a real stranger. Nothing ever dials them, but they can be switched to an unassignable prefix if you would rather.
+
+### What this does not cover
+
+**The leads pages still show real phone numbers and email addresses on screen to anyone who is logged in.** This gate covers the one-click bulk export — the fastest way to walk off with everything — and nothing else. Someone with working admin credentials can still read the real data off `/leads`, or scrape it. Treat the decoy as a speed bump on bulk exfiltration, not as "the data is hidden now".
+
+Keep `LEAD_EXPORT_REAL_PASSPHRASE` **different from `LEAD_ENCRYPTION_PASSPHRASE`**. The export passphrase gets typed into a web form, which is not somewhere the key that protects every stored phone number and email should ever go.
+
+Run `npm run test:export-unlock` after touching either file. It covers near-misses, empty and unset passphrases, the no-echo rule, and that decoy rows stay stable and plausible.
+
 ## Questionnaire workflow
 
 Edits are saved to a draft and do not immediately affect live visitors. Select **Publish changes** when the draft is ready. Publishing archives the old version, makes the draft live atomically, and creates a new editable draft. Leads submitted from a recently archived form remain accepted for 24 hours so visitors already filling the form are not lost.
@@ -154,6 +184,7 @@ npm run typecheck
 npm run lint
 npm run build
 npm run test:lead-crypto
+npm run test:export-unlock
 ```
 
 For the browser flow, start the app and run:
