@@ -14,7 +14,12 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export default async function AdminOverviewPage() {
+export default async function AdminOverviewPage({
+  params,
+}: {
+  params: Promise<{ adminSlug: string }>;
+}) {
+  const { adminSlug } = await params;
   const data = await getDashboardData();
   const maxDaily = Math.max(...data.daily.map((item) => item.count), 1);
 
@@ -22,7 +27,7 @@ export default async function AdminOverviewPage() {
     <main className="admin-page">
       <div className="admin-page-heading">
         <div><span className="admin-page-kicker">OVERVIEW</span><h1>Lead pulse</h1><p>A quick view of new enquiries and team follow-up.</p></div>
-        <Link className="admin-button primary" href="/admin/leads">View all leads <ArrowRight size={17} /></Link>
+        <Link className="admin-button primary" href={`/${adminSlug}/leads`}>View all leads <ArrowRight size={17} /></Link>
       </div>
 
       <section className="admin-stat-grid">
@@ -50,12 +55,12 @@ export default async function AdminOverviewPage() {
       </section>
 
       <section className="admin-card recent-leads-card">
-        <header><div><span className="admin-page-kicker">LATEST ENQUIRIES</span><h2>Recent leads</h2></div><Link href="/admin/leads">See all <ArrowRight size={15} /></Link></header>
+        <header><div><span className="admin-page-kicker">LATEST ENQUIRIES</span><h2>Recent leads</h2></div><Link href={`/${adminSlug}/leads`}>See all <ArrowRight size={15} /></Link></header>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead><tr><th>Lead</th><th>Contact</th><th>City</th><th>Received</th><th>Status</th><th /></tr></thead>
             <tbody>
-              {data.recent.map((lead) => <tr key={lead.id}><td><strong>{lead.name || "Unnamed lead"}</strong><small>{lead.source || "direct"}</small></td><td><strong>{lead.phone || lead.email || "—"}</strong><small>{lead.language.toUpperCase()}</small></td><td>{lead.city || "—"}</td><td>{formatDate(lead.createdAt)}</td><td><LeadStatusControl id={lead.id} initialStatus={lead.status} /></td><td><Link className="table-arrow" href={`/admin/leads/${lead.id}`} aria-label={`View ${lead.name || "lead"}`}><ArrowRight size={16} /></Link></td></tr>)}
+              {data.recent.map((lead) => <tr key={lead.id}><td><strong>{lead.name || "Unnamed lead"}</strong><small>{lead.source || "direct"}</small></td><td><strong>{lead.phone || lead.email || "—"}</strong><small>{lead.language.toUpperCase()}</small></td><td>{lead.city || "—"}</td><td>{formatDate(lead.createdAt)}</td><td><LeadStatusControl id={lead.id} initialStatus={lead.status} /></td><td><Link className="table-arrow" href={`/${adminSlug}/leads/${lead.id}`} aria-label={`View ${lead.name || "lead"}`}><ArrowRight size={16} /></Link></td></tr>)}
               {!data.recent.length && <tr><td colSpan={6} className="empty-table">No leads yet. New form submissions will appear here.</td></tr>}
             </tbody>
           </table>

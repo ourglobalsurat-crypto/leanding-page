@@ -1,6 +1,13 @@
 import crypto from "node:crypto";
 
 import { getSql } from "@/lib/db";
+import {
+  blindIndex,
+  encryptField,
+  fieldAad,
+  normalizeEmailForIndex,
+  normalizePhoneForIndex,
+} from "@/lib/lead-crypto";
 import { issueLeadReceipt } from "@/lib/lead-receipt";
 import {
   getSelectedGrowthPath,
@@ -181,11 +188,23 @@ export async function POST(request: Request) {
       ?? byKey.get(legacyKey);
     const nameValue = valueForRole("contact_name", "full_name");
     const phoneValue = valueForRole("contact_phone", "phone");
+    const emailValue = byKey.get("email");
+    const cityValue = byKey.get("city");
     const name = typeof nameValue === "string" ? nameValue : null;
     const phone = typeof phoneValue === "string" ? phoneValue : null;
-    const email = typeof byKey.get("email") === "string" ? byKey.get("email") : null;
-    const city = typeof byKey.get("city") === "string" ? byKey.get("city") : null;
+    const email = typeof emailValue === "string" ? emailValue : null;
+    const city = typeof cityValue === "string" ? cityValue : null;
     const leadId = crypto.randomUUID();
+
+    // Phone and email are never written in plain text — see src/lib/lead-crypto.ts.
+    // The blind index is a keyed hash of the normalized value, computed here
+    // (not in SQL) so the admin search box can look up an exact match without
+    // the database ever holding the plaintext or an unkeyed, guessable hash.
+    const phoneEnc = phone ? encryptField(phone, fieldAad(leadId, "phone")) : null;
+    const phoneBidx = phone ? blindIndex(normalizePhoneForIndex(phone) ?? phone) : null;
+    const emailEnc = email ? encryptField(email, fieldAad(leadId, "email")) : null;
+    const emailBidx = email ? blindIndex(normalizeEmailForIndex(email)) : null;
+
     const attribution = payload.attribution ?? {};
     const utm = {
       source: attribution.utmSource ?? "",
@@ -200,11 +219,13 @@ export async function POST(request: Request) {
     const queries = [
       sql.query(
         `INSERT INTO leads (
-          id, form_id, form_version_id, language, name, phone, email, city,
+          id, form_id, form_version_id, language, name,
+          phone_enc, phone_bidx, email_enc, email_bidx, city,
           status, source, referrer, utm, consent_at, submission_token
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8,
-          'new', $9, $10, $11::jsonb, now(), $12
+          $1, $2, $3, $4, $5,
+          $6, $7, $8, $9, $10,
+          'new', $11, $12, $13::jsonb, now(), $14
         )`,
         [
           leadId,
@@ -212,8 +233,10 @@ export async function POST(request: Request) {
           payload.versionId,
           payload.language,
           name,
-          phone,
-          email,
+          phoneEnc,
+          phoneBidx,
+          emailEnc,
+          emailBidx,
           city,
           attribution.utmSource || attribution.source || (attribution.fbclid ? "facebook" : "direct"),
           attribution.referrer || null,

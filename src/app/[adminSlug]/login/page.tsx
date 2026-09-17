@@ -8,11 +8,15 @@ import { getAdminSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Admin login",
-  robots: { index: false, follow: false },
 };
 
-export default async function AdminLoginPage() {
-  if (await getAdminSession()) redirect("/admin");
+export default async function AdminLoginPage({
+  params,
+}: {
+  params: Promise<{ adminSlug: string }>;
+}) {
+  const { adminSlug } = await params;
+  if (await getAdminSession()) redirect(`/${adminSlug}`);
 
   return (
     <main className="admin-login-page">
@@ -31,7 +35,7 @@ export default async function AdminLoginPage() {
           <span className="admin-page-kicker">PRIVATE ADMIN AREA</span>
           <h1>Welcome back.</h1>
           <p>Sign in to review leads and update the questionnaire.</p>
-          <AdminLoginForm />
+          <AdminLoginForm adminSlug={adminSlug} />
         </div>
         <small>Protected by a secure, expiring session.</small>
       </section>

@@ -116,8 +116,8 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   }
 }
 
-export async function requireAdmin() {
+export async function requireAdmin(adminSlug: string) {
   const admin = await getAdminSession();
-  if (!admin) redirect("/admin/login");
+  if (!admin) redirect(`/${adminSlug}/login`);
   return admin;
 }

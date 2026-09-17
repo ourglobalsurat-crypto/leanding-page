@@ -11,6 +11,8 @@
     "db:setup": "tsx scripts/setup-db.ts",
     "db:publish-language-update": "tsx scripts/publish-language-update.ts",
     "db:publish-branching-form": "tsx scripts/publish-branching-questionnaire.ts",
+    "db:migrate-encrypt-leads": "tsx scripts/migrate-encrypt-leads.ts",
+    "test:lead-crypto": "tsx scripts/test-lead-crypto.ts",
     "qa:e2e": "node scripts/qa.mjs"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "sharp": "^0.35.4",
     "zod": "^4.4.3"
   },

@@ -12,7 +12,7 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Receipt-gated conversion page at `/thank-you` after a lead is successfully stored
 - Google Tag Manager container `GTM-W44W95MN` on every route, with a CSP allowlist for it
 - Deduplicated `dataLayer` and Meta Pixel lead-event hooks with an opaque event ID
-- Authenticated admin dashboard at `/admin`
+- Authenticated admin dashboard at a private, non-`/admin` URL that 404s everywhere else
 - Lead search, filters, status management, notes, detail view, and CSV export
 - Draft-and-publish questionnaire builder with add, edit, hide, delete, and reorder controls
 - Short text, long text, email, phone, number, date, dropdown, single choice, checkboxes, yes/no, and rating question types
@@ -56,11 +56,62 @@ The setup script is idempotent. Running it again updates the configured admin pa
 | `ADMIN_EMAIL` | Initial admin login email |
 | `ADMIN_PASSWORD` | Initial admin login password; use a strong unique value |
 | `SESSION_SECRET` | Random secret of at least 32 characters used to sign admin sessions and short-lived lead receipts |
+| `ADMIN_URL_SLUGS` | Optional. Comma-separated URL segments the admin panel answers on. Defaults to `gsm-admin,fenil-admin`. See [Admin panel URLs](#admin-panel-urls) |
+| `LEAD_ENCRYPTION_PASSPHRASE` | Encrypts every lead's stored phone number and email address. Losing this permanently loses the ability to read them. See [Lead data encryption](#lead-data-encryption) |
+| `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email — cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Digits-only WhatsApp number including country code |
 | `NEXT_PUBLIC_CONTACT_PHONE` | Display phone number |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Display contact email |
 
 Never commit `.env.local`. The repository intentionally tracks only `.env.example`.
+
+## Admin panel URLs
+
+The admin panel is not mounted at `/admin`. It answers at `/gsm-admin` and `/fenil-admin` (both render the identical panel), and every other path — including `/admin` itself — gets the site's ordinary 404, indistinguishable from a mistyped URL. This is implemented as a dynamic route segment (`src/app/[adminSlug]/`) that calls Next's `notFound()` for any segment not in the allowlist; see `src/lib/admin-routes.ts`.
+
+**This is obscurity, not authentication.** The password login behind these URLs is still the real security boundary — a hard-to-guess path only cuts down automated bots that scan for a well-known `/admin`. Anyone who learns either URL still needs valid credentials to see anything. Do not treat this as a substitute for a strong password, and do not rely on it alone.
+
+Change the two segments with `ADMIN_URL_SLUGS` (comma-separated), for example if either leaks:
+
+```
+ADMIN_URL_SLUGS=gsm-admin,fenil-admin
+```
+
+**Never put an admin URL in `robots.txt` and never link to it from the public site.** `robots.txt` is a public, unauthenticated file anyone can read at `/robots.txt` — a `Disallow` entry there publishes the exact path it names, to every visitor and every scraper, which defeats the purpose entirely. `src/app/robots.ts` deliberately excludes the admin paths for this reason. Likewise, no page in this repository links to the admin panel; share the URL with your team directly (bookmark it, don't paste it into a public doc), the same way you'd share a password.
+
+## Lead data encryption
+
+A lead's phone number and email address are stored only as AES-256-GCM ciphertext (`phone_enc`/`email_enc` on the `leads` table) — a stolen database backup contains no readable contact details. Name and city are stored as plain text on purpose: see "What isn't encrypted, and why" below. This is implemented in `src/lib/lead-crypto.ts`.
+
+### Two passphrases, two different jobs
+
+- `LEAD_ENCRYPTION_PASSPHRASE` encrypts and decrypts the field. This is what protects the data.
+- `LEAD_INDEX_PASSPHRASE` computes a separate "blind index" — a keyed hash (HMAC-SHA256) of the normalized phone/email, stored alongside the ciphertext purely so the admin search box can find an exact match without decrypting anything to do it.
+
+They're kept apart deliberately: leaking the index passphrase lets someone test guesses against the index (confirm whether a specific number is in your leads) but decrypts nothing. Leaking the encryption passphrase decrypts data but can't be used to search or enumerate what's stored. A single shared key would let a leak of either do both.
+
+Both passphrases are stretched into real 256-bit keys via `scrypt` before use, so a memorable passphrase is still safe as the input. **If you ever lose both passphrases, every encrypted phone number and email address becomes permanently unreadable — there is no recovery path.** Back them up somewhere durable (a password manager), not only in `.env.local`.
+
+### What isn't encrypted, and why
+
+The admin search box does partial, "contains" matching ("Raj" finds "Rajesh") — that's how `name` and `city` search has always worked, and it stays exactly as it is because both remain plain text. A blind index only supports **exact** matches, so encrypting name/city would silently break that kind of search; encrypting phone/email instead narrows their search from "contains" to "exact, normalized match" — typing a complete phone number or email address finds the lead, typing the last 4 digits or a domain like `@gmail.com` does not. This trade-off is why phone/email were chosen for encryption and name/city were not: phone and email are what let someone actually contact or impersonate a real person, which is the sharper risk.
+
+### Migrating an existing database
+
+A fresh `npm run db:setup` already creates the encrypted columns — nothing further to do. A database created before this feature existed needs a one-time migration:
+
+```bash
+npm run db:migrate-encrypt-leads                  # dry run — reports what would change, writes nothing
+npm run db:migrate-encrypt-leads -- --apply        # adds the columns and encrypts existing rows
+```
+
+It's safe to re-run: every step is `IF NOT EXISTS`/idempotent, and it only touches rows that don't have encrypted data yet. It deliberately does **not** drop the old plaintext `phone`/`email` columns — check that the admin panel shows the right phone number and email for a few real leads first, then drop them yourself:
+
+```sql
+ALTER TABLE leads DROP COLUMN phone, DROP COLUMN email;
+```
+
+Run `npm run test:lead-crypto` after changing anything in `src/lib/lead-crypto.ts` — it covers round-tripping, tamper detection, wrong-key/wrong-row decryption failures, and blind-index normalization.
 
 ## Questionnaire workflow
 
@@ -102,6 +153,7 @@ GTM Preview and Tag Assistant frame the site, so they are blocked by `frame-ance
 npm run typecheck
 npm run lint
 npm run build
+npm run test:lead-crypto
 ```
 
 For the browser flow, start the app and run:
@@ -117,7 +169,9 @@ $env:QA_BASE_URL = "http://localhost:3000"
 npm run qa:e2e
 ```
 
-The browser test submits and removes a synthetic lead, verifies admin login, updates a lead, creates and deletes a draft question, checks 1440/390/320 layouts, and writes ignored screenshots to `artifacts/qa`.
+The browser test submits and removes a synthetic lead, verifies admin login, updates a lead, creates and deletes a draft question, checks 1440/390/320 layouts, and writes ignored screenshots to `artifacts/qa`. The admin URL it drives is `gsm-admin` by default; override with `QA_ADMIN_SLUG` if you changed `ADMIN_URL_SLUGS`.
+
+> As of writing, this script fails on an unrelated pre-existing timing issue (`scripts/qa.mjs:116`, a Playwright/Chrome race on `response.json()` after a client-side redirect) — reproducible on a clean checkout with no changes at all. Not caused by anything in this repository's application code; needs its own fix.
 
 ## Deployment
 

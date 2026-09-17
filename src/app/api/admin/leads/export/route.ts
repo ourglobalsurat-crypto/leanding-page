@@ -1,6 +1,18 @@
 import { getAdminSession } from "@/lib/auth";
 import { getSql } from "@/lib/db";
+import { decryptField, fieldAad } from "@/lib/lead-crypto";
 import { jsonError, safeCsvCell } from "@/lib/security";
+
+/** One row's ciphertext being unreadable should not fail the whole export. */
+function decryptOrBlank(value: unknown, aad: string): string {
+  if (!value) return "";
+  try {
+    return decryptField(value as string, aad);
+  } catch (error) {
+    console.error(`Could not decrypt a field for CSV export (${aad}).`, error);
+    return "";
+  }
+}
 
 export async function GET() {
   if (!(await getAdminSession())) return jsonError("Please sign in again.", 401);
@@ -8,7 +20,7 @@ export async function GET() {
   try {
     const sql = getSql();
     const rows = (await sql.query(
-      `SELECT l.id, l.created_at, l.name, l.phone, l.email, l.city, l.language,
+      `SELECT l.id, l.created_at, l.name, l.phone_enc, l.email_enc, l.city, l.language,
               l.status, l.source, l.utm,
               coalesce(jsonb_object_agg(la.question_key, la.answer)
                 FILTER (WHERE la.question_key IS NOT NULL), '{}'::jsonb) AS answers
@@ -34,13 +46,17 @@ export async function GET() {
     const lines = [headers.map(safeCsvCell).join(",")];
 
     for (const row of rows) {
+      const leadId = String(row.id);
+      const phone = decryptOrBlank(row.phone_enc, fieldAad(leadId, "phone"));
+      const email = decryptOrBlank(row.email_enc, fieldAad(leadId, "email"));
+
       lines.push(
         [
           row.id,
           new Date(row.created_at as string | Date).toISOString(),
           row.name,
-          row.phone,
-          row.email,
+          phone,
+          email,
           row.city,
           row.language,
           row.status,

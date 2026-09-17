@@ -698,7 +698,6 @@ export function LandingPage({ questionnaire }: { questionnaire: PublicQuestionna
         <div>
           <span>© {new Date().getFullYear()} Global Surat</span>
           <a href={MAIN_WEBSITE_URL} target="_blank" rel="noopener noreferrer">{text(siteCopy.websiteShort, locale)} ↗</a>
-          <a href="/admin/login">Admin</a>
         </div>
       </footer>
 

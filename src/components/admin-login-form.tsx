@@ -4,7 +4,7 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-export function AdminLoginForm() {
+export function AdminLoginForm({ adminSlug }: { adminSlug: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +27,7 @@ export function AdminLoginForm() {
         setError(result.message || "Could not sign in.");
         return;
       }
-      router.replace("/admin");
+      router.replace(`/${adminSlug}`);
       router.refresh();
     } catch {
       setError("Could not connect. Please try again.");

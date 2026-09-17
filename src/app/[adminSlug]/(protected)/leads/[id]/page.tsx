@@ -20,15 +20,19 @@ function displayAnswer(item: LeadAnswer) {
   return Array.isArray(item.answer) ? item.answer.map(resolve).join(", ") : resolve(item.answer);
 }
 
-export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function LeadDetailPage({
+  params,
+}: {
+  params: Promise<{ adminSlug: string; id: string }>;
+}) {
+  const { adminSlug, id } = await params;
   const lead = await getLeadDetail(id);
   if (!lead) notFound();
   const whatsappDigits = lead.phone?.replace(/\D/g, "");
 
   return (
     <main className="admin-page">
-      <Link className="admin-back-link" href="/admin/leads"><ArrowLeft size={16} /> Back to all leads</Link>
+      <Link className="admin-back-link" href={`/${adminSlug}/leads`}><ArrowLeft size={16} /> Back to all leads</Link>
       <div className="lead-detail-heading">
         <div><span className="admin-page-kicker">LEAD DETAIL</span><h1>{lead.name || "Unnamed lead"}</h1><p>Received {formatDate(lead.createdAt)}</p></div>
         <LeadStatusControl id={lead.id} initialStatus={lead.status} />

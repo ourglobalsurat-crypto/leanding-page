@@ -14,12 +14,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
-const navigation = [
-  { href: "/admin", label: "Overview", icon: BarChart3 },
-  { href: "/admin/leads", label: "Leads", icon: Users },
-  { href: "/admin/questionnaire", label: "Questionnaire", icon: ClipboardList },
-];
-
 export function AdminShell({
   children,
   adminEmail,
@@ -32,11 +26,21 @@ export function AdminShell({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // The admin base path is not fixed — it's whichever allowed segment the
+  // visitor is currently on (see src/lib/admin-routes.ts) — so every link here
+  // is built from the live URL rather than a hardcoded "/admin".
+  const base = `/${pathname.split("/")[1] ?? ""}`;
+  const navigation = [
+    { href: base, label: "Overview", icon: BarChart3 },
+    { href: `${base}/leads`, label: "Leads", icon: Users },
+    { href: `${base}/questionnaire`, label: "Questionnaire", icon: ClipboardList },
+  ];
+
   async function logout() {
     setIsLoggingOut(true);
     try {
       await fetch("/api/admin/logout", { method: "POST" });
-      router.replace("/admin/login");
+      router.replace(`${base}/login`);
       router.refresh();
     } finally {
       setIsLoggingOut(false);
@@ -53,13 +57,13 @@ export function AdminShell({
       </header>
 
       <aside className={isMenuOpen ? "admin-sidebar open" : "admin-sidebar"}>
-        <Link href="/admin" className="admin-brand" onClick={() => setIsMenuOpen(false)}>
+        <Link href={base} className="admin-brand" onClick={() => setIsMenuOpen(false)}>
           <Image src="/assets/global-surat-logo.png" alt="Global Surat" width={175} height={94} priority />
           <span>LEAD DESK</span>
         </Link>
         <nav aria-label="Admin navigation">
           {navigation.map((item) => {
-            const active = item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
+            const active = item.href === base ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} className={active ? "active" : ""} onClick={() => setIsMenuOpen(false)}>

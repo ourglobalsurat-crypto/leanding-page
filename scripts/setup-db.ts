@@ -83,8 +83,13 @@ const statements = [
     form_version_id uuid NOT NULL REFERENCES form_versions(id),
     language text NOT NULL CHECK (language IN ('en', 'hi', 'gu')),
     name text,
-    phone text,
-    email text,
+    -- Phone and email are stored only as AES-256-GCM ciphertext, plus a
+    -- blind index (a keyed hash) that lets the admin search box find an
+    -- exact match without ever decrypting anything. See src/lib/lead-crypto.ts.
+    phone_enc text,
+    phone_bidx text,
+    email_enc text,
+    email_bidx text,
     city text,
     status text NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'qualified', 'won', 'not_interested')),
     source text,
@@ -122,7 +127,8 @@ const statements = [
   )`,
   `CREATE INDEX IF NOT EXISTS leads_created_at_idx ON leads(created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS leads_status_idx ON leads(status, created_at DESC)`,
-  `CREATE INDEX IF NOT EXISTS leads_phone_idx ON leads(phone)`,
+  `CREATE INDEX IF NOT EXISTS leads_phone_bidx_idx ON leads(phone_bidx)`,
+  `CREATE INDEX IF NOT EXISTS leads_email_bidx_idx ON leads(email_bidx)`,
   `CREATE INDEX IF NOT EXISTS questions_version_position_idx ON questions(version_id, position)`,
   `CREATE INDEX IF NOT EXISTS lead_answers_lead_idx ON lead_answers(lead_id)`,
 ];

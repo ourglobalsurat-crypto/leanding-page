@@ -1,13 +1,20 @@
 import "server-only";
 
 import { getSql } from "@/lib/db";
+import {
+  blindIndex,
+  decryptField,
+  fieldAad,
+  normalizeEmailForIndex,
+  normalizePhoneForIndex,
+} from "@/lib/lead-crypto";
 import type { LeadDetail, LeadListItem, LeadStatus, Locale } from "@/lib/types";
 
 type LeadRow = {
   id: string;
   name: string | null;
-  phone: string | null;
-  email: string | null;
+  phone_enc: string | null;
+  email_enc: string | null;
   city: string | null;
   language: Locale;
   status: LeadStatus;
@@ -15,12 +22,30 @@ type LeadRow = {
   created_at: string | Date;
 };
 
+const LEAD_COLUMNS = "id, name, phone_enc, email_enc, city, language, status, source, created_at";
+
+/**
+ * Decryption failures here (wrong/missing key, corrupted row) surface as
+ * "—" rather than crashing the whole dashboard — one unreadable lead should
+ * not take down the page for every other lead. Failures are still logged so
+ * they don't go unnoticed.
+ */
+function decryptOrNull(value: string | null, aad: string, field: string, leadId: string): string | null {
+  if (!value) return null;
+  try {
+    return decryptField(value, aad);
+  } catch (error) {
+    console.error(`Could not decrypt ${field} for lead ${leadId}.`, error);
+    return null;
+  }
+}
+
 function toLead(row: LeadRow): LeadListItem {
   return {
     id: row.id,
     name: row.name,
-    phone: row.phone,
-    email: row.email,
+    phone: decryptOrNull(row.phone_enc, fieldAad(row.id, "phone"), "phone", row.id),
+    email: decryptOrNull(row.email_enc, fieldAad(row.id, "email"), "email", row.id),
     city: row.city,
     language: row.language,
     status: row.status,
@@ -41,7 +66,7 @@ export async function getDashboardData() {
        FROM leads`,
     ),
     sql.query(
-      `SELECT id, name, phone, email, city, language, status, source, created_at
+      `SELECT ${LEAD_COLUMNS}
        FROM leads ORDER BY created_at DESC LIMIT 7`,
     ),
     sql.query(
@@ -105,18 +130,35 @@ export async function getLeads({
 
   const normalizedSearch = search.trim().slice(0, 100);
   if (normalizedSearch) {
+    // name and city stay in plain text, so "Raj" still finds "Rajesh" the way
+    // it always has. phone and email are encrypted, so there is no column to
+    // ILIKE — instead, if the search term itself normalizes to a complete
+    // phone number or a well-formed email address, its blind index is looked
+    // up for an exact match. A partial phone/email ("98765", "@gmail.com")
+    // will not match; that trade-off is documented in the README.
+    const textClauses: string[] = [];
+
     params.push(`%${normalizedSearch}%`);
-    clauses.push(
-      `(coalesce(name, '') ILIKE $${params.length}
-        OR coalesce(phone, '') ILIKE $${params.length}
-        OR coalesce(email, '') ILIKE $${params.length}
-        OR coalesce(city, '') ILIKE $${params.length})`,
-    );
+    const likeParam = params.length;
+    textClauses.push(`coalesce(name, '') ILIKE $${likeParam}`, `coalesce(city, '') ILIKE $${likeParam}`);
+
+    const phoneCandidate = normalizePhoneForIndex(normalizedSearch);
+    if (phoneCandidate) {
+      params.push(blindIndex(phoneCandidate));
+      textClauses.push(`phone_bidx = $${params.length}`);
+    }
+
+    if (normalizedSearch.includes("@")) {
+      params.push(blindIndex(normalizeEmailForIndex(normalizedSearch)));
+      textClauses.push(`email_bidx = $${params.length}`);
+    }
+
+    clauses.push(`(${textClauses.join(" OR ")})`);
   }
 
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const rows = (await sql.query(
-    `SELECT id, name, phone, email, city, language, status, source, created_at
+    `SELECT ${LEAD_COLUMNS}
      FROM leads
      ${where}
      ORDER BY created_at DESC
@@ -130,8 +172,8 @@ export async function getLeads({
 export async function getLeadDetail(id: string): Promise<LeadDetail | null> {
   const sql = getSql();
   const rows = (await sql.query(
-    `SELECT id, name, phone, email, city, language, status, source,
-            referrer, utm, consent_at, created_at
+    `SELECT ${LEAD_COLUMNS},
+            referrer, utm, consent_at
      FROM leads WHERE id = $1 LIMIT 1`,
     [id],
   )) as Array<LeadRow & { referrer: string | null; utm: Record<string, string>; consent_at: string | Date }>;

@@ -5,12 +5,18 @@ import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Lead Desk",
-  robots: { index: false, follow: false, noarchive: true },
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await requireAdmin();
+export default async function ProtectedAdminLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ adminSlug: string }>;
+}) {
+  const { adminSlug } = await params;
+  const admin = await requireAdmin(adminSlug);
   return <AdminShell adminEmail={admin.email}>{children}</AdminShell>;
 }
