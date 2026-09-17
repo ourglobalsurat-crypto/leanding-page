@@ -13,7 +13,7 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Google Tag Manager container `GTM-W44W95MN` on every route, with a CSP allowlist for it
 - Deduplicated `dataLayer` and Meta Pixel lead-event hooks with an opaque event ID
 - Authenticated admin dashboard at a private, non-`/admin` URL that 404s everywhere else
-- Lead search, filters, status management, notes, detail view, and CSV export
+- Lead search, filters, status management, notes, detail view, and a password-protected Excel export
 - Draft-and-publish questionnaire builder with add, edit, hide, delete, and reorder controls
 - Short text, long text, email, phone, number, date, dropdown, single choice, checkboxes, yes/no, and rating question types
 - Versioned forms and answer snapshots, so old leads keep the exact question text and options they answered
@@ -59,8 +59,8 @@ The setup script is idempotent. Running it again updates the configured admin pa
 | `ADMIN_URL_SLUGS` | Optional. Comma-separated URL segments the admin panel answers on. Defaults to `gsm-admin,fenil-admin`. See [Admin panel URLs](#admin-panel-urls) |
 | `LEAD_ENCRYPTION_PASSPHRASE` | Encrypts every lead's stored phone number and email address. Losing this permanently loses the ability to read them. See [Lead data encryption](#lead-data-encryption) |
 | `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email — cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
-| `LEAD_EXPORT_REAL_PASSPHRASE` | Typed into the export dialog to get a CSV of the real leads. See [CSV export and the decoy file](#csv-export-and-the-decoy-file) |
-| `LEAD_EXPORT_DECOY_PASSPHRASE` | Typed into the export dialog to get a CSV of invented leads. Anything else typed there does the same thing |
+| `LEAD_EXPORT_REAL_PASSPHRASE` | Opens a lead export containing the real leads, and typed into "Add content" to produce one. See [Lead export and the decoy file](#lead-export-and-the-decoy-file) |
+| `LEAD_EXPORT_DECOY_PASSPHRASE` | Opens the export that the plain **Export CSV** button produces, which contains invented leads |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Digits-only WhatsApp number including country code |
 | `NEXT_PUBLIC_CONTACT_PHONE` | Display phone number |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Display contact email |
@@ -115,33 +115,52 @@ ALTER TABLE leads DROP COLUMN phone, DROP COLUMN email;
 
 Run `npm run test:lead-crypto` after changing anything in `src/lib/lead-crypto.ts` — it covers round-tripping, tamper detection, wrong-key/wrong-row decryption failures, and blind-index normalization.
 
-## CSV export and the decoy file
+## Lead export and the decoy file
 
-**Export CSV** on the leads page opens a dialog with a single field labelled **Add content**. For anyone who does not know otherwise it behaves exactly as labelled — type a note, it is written into the downloaded file. What it also does is decide what that file contains:
+The lead export is a **password-protected `.xlsx`**, not a CSV. Two reasons: a `.csv` opens in whatever the machine has associated with it (often a text editor), whereas `.xlsx` opens in Excel; and Office Open XML has a documented encryption format, so the file itself is AES-encrypted and **Excel asks for the password when the file is opened**. A plain CSV was readable by anyone who got hold of it. This is not.
 
-| Typed into "Add content" | The downloaded file contains |
+There are two controls on the leads page, and neither mentions a key:
+
+| Control | What happens |
 | --- | --- |
-| `LEAD_EXPORT_REAL_PASSPHRASE` | The real, decrypted leads |
-| `LEAD_EXPORT_DECOY_PASSPHRASE` | Invented leads |
-| Anything else, including nothing | Invented leads, plus the typed text written in as content |
+| **Export CSV** | Downloads immediately, no prompt. The file opens with `LEAD_EXPORT_DECOY_PASSPHRASE` and contains invented leads. |
+| **Add content** → `LEAD_EXPORT_REAL_PASSPHRASE` | The file opens with that passphrase and contains the real, decrypted leads. |
+| **Add content** → anything else | The file opens with whatever was typed, contains invented leads, and the typed text is written into the sheet as content. |
 
-There is deliberately **no error, ever** — no "wrong passphrase", no different status code, no different wait. A wrong entry is indistinguishable from the decoy passphrase, which is the whole point: someone who forces their way in gets a plausible file and no hint that a better answer exists. The two passphrases are compared in constant time and neither is written into the file.
+There is deliberately **no error, ever** — no "wrong passphrase", no different status code, no different wait. A wrong entry produces a working file full of invented rows, indistinguishable from the decoy passphrase's. The two passphrases are compared in constant time and neither is ever written into the file.
 
-The check runs server-side (`src/lib/export-unlock.ts`). Requesting `/api/admin/leads/export` directly, skipping the dialog, returns the decoy file rather than an error — a `405` there would be a signpost saying the real data is behind something else.
+The file is always locked with whatever was typed, so **every entry produces a file that opens**. Locking a wrong entry's file with something else would make it refuse to open, and "this file won't open" is itself the error message this design exists to avoid.
+
+The decision is made server-side (`src/lib/export-unlock.ts`). Requesting `/api/admin/leads/export` directly, skipping the buttons, returns the decoy file rather than an error — a `405` there would be a signpost saying the real data sits behind something else.
 
 ### What the decoy file contains
 
-Invented rows, generated in `src/lib/decoy-leads.ts`. **The only thing taken from the database is the number of leads**, so the file is a believable size; not one name, number, address, date or answer below that comes from a real record. Generation is deterministic, so exporting twice produces byte-identical files — fresh random names on each download would itself be the tell.
+Invented rows, generated in `src/lib/decoy-leads.ts`. **The only thing taken from the database is the number of leads**, so the file is a believable size; not one name, number, address, date or answer in it comes from a real record. Generation is deterministic, so exporting twice produces identical files — fresh random names on each download would itself be the tell.
 
 The invented phone numbers are structurally valid Indian mobile numbers, which is what makes them believable and also means one could in principle belong to a real stranger. Nothing ever dials them, but they can be switched to an unassignable prefix if you would rather.
 
+### Opening the file
+
+**Excel, LibreOffice Calc and Apple Numbers** can open password-protected `.xlsx`. **Google Sheets cannot** — it has no way to prompt for the password, so uploading one of these files there will fail. Open it in Excel.
+
+### What is not possible, and why
+
+A button *inside the spreadsheet* that reveals the real data on a second passphrase is not something this can do safely:
+
+- Doing it in-file needs a VBA macro, and Excel has blocked macros in files downloaded from the internet by default since 2022. Anyone receiving one would have to deliberately unblock it, and antivirus treats macro-enabled downloads as suspicious.
+- More importantly, the real data would then have to be *inside* the file to be revealed — and anything inside the file can be extracted from it by unzipping, whatever the button does. A second lock drawn on top of data that is already in the file protects nothing.
+
+So the second passphrase is entered in the admin panel, where the server can decide what to put in the file before it is ever built. The real data is simply never in the decoy file to begin with.
+
+For the same reason, the export is not a downloadable script that prompts for a passphrase: a script that arrives from a website and asks to be run is the shape of malware, browsers and antivirus block it, and on Windows it would not run on a double-click anyway. The encrypted workbook gets the same "enter the key to unlock" behaviour natively, through Excel.
+
 ### What this does not cover
 
-**The leads pages still show real phone numbers and email addresses on screen to anyone who is logged in.** This gate covers the one-click bulk export — the fastest way to walk off with everything — and nothing else. Someone with working admin credentials can still read the real data off `/leads`, or scrape it. Treat the decoy as a speed bump on bulk exfiltration, not as "the data is hidden now".
+**The leads pages still show real phone numbers and email addresses on screen to anyone who is logged in.** This covers the one-click bulk export — the fastest way to walk off with everything — and nothing else. Someone with working admin credentials can still read the real data off `/leads`, or scrape it. Treat the decoy as a speed bump on bulk exfiltration, not as "the data is hidden now".
 
-Keep `LEAD_EXPORT_REAL_PASSPHRASE` **different from `LEAD_ENCRYPTION_PASSPHRASE`**. The export passphrase gets typed into a web form, which is not somewhere the key that protects every stored phone number and email should ever go.
+Keep `LEAD_EXPORT_REAL_PASSPHRASE` **different from `LEAD_ENCRYPTION_PASSPHRASE`**. The export passphrase gets typed into a web form and into Excel's password box; the key that protects every stored phone number and email should go in neither.
 
-Run `npm run test:export-unlock` after touching either file. It covers near-misses, empty and unset passphrases, the no-echo rule, and that decoy rows stay stable and plausible.
+Run `npm run test:export-unlock` after touching any of this. It covers near-misses, empty and unset passphrases, the no-echo rule, that the workbook is genuinely encrypted rather than a plain zip, that a wrong password cannot open it, and that its contents never appear in the clear inside the file.
 
 ## Questionnaire workflow
 

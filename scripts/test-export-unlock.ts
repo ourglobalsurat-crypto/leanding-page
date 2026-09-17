@@ -21,6 +21,17 @@ function check(name: string, fn: () => void) {
   }
 }
 
+async function checkAsync(name: string, fn: () => Promise<void>) {
+  try {
+    await fn();
+    console.log(`  ok   ${name}`);
+  } catch (error) {
+    failed += 1;
+    console.error(`  FAIL ${name}
+       ${error instanceof Error ? error.message : error}`);
+  }
+}
+
 function assertEqual(actual: unknown, expected: unknown, message: string) {
   if (actual !== expected) {
     throw new Error(`${message} (expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`);
@@ -28,7 +39,9 @@ function assertEqual(actual: unknown, expected: unknown, message: string) {
 }
 
 async function main() {
-  const { resolveExportMode, shouldEchoContent } = await import("../src/lib/export-unlock");
+  const { resolveExportMode, shouldEchoContent, filePasswordFor } = await import("../src/lib/export-unlock");
+  const { toEncryptedXlsx } = await import("../src/lib/encrypted-workbook");
+  const officeCrypto = (await import("officecrypto-tool")).default;
   const { buildDecoyLeads } = await import("../src/lib/decoy-leads");
 
   check("the real passphrase unlocks real data", () => {
@@ -111,6 +124,41 @@ async function main() {
       if (Date.parse(leads[i].createdAt) >= Date.parse(leads[i - 1].createdAt)) {
         throw new Error("decoy rows are not in descending date order");
       }
+    }
+  });
+
+  check("the file password is always what was typed, so the file always opens", () => {
+    assertEqual(filePasswordFor("real-passphrase-for-tests"), "real-passphrase-for-tests", "real passphrase should lock its own file");
+    assertEqual(filePasswordFor("hello there"), "hello there", "a wrong entry must still open the file it produced");
+    assertEqual(filePasswordFor(""), "decoy-passphrase-for-tests", "an empty entry should fall back to the decoy passphrase");
+    assertEqual(filePasswordFor("   "), "decoy-passphrase-for-tests", "a blank entry should fall back to the decoy passphrase");
+  });
+
+  await checkAsync("the exported workbook is genuinely encrypted, not a plain zip", async () => {
+    const buf = await toEncryptedXlsx([["Name", "Phone"], ["Rajesh Patel", "+919876543210"]], "first-key");
+    const ole = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    if (!buf.subarray(0, 8).equals(ole)) throw new Error("output is not an encrypted Office container");
+    if (buf.subarray(0, 2).toString() === "PK") throw new Error("output is a plain unencrypted zip");
+    if (!officeCrypto.isEncrypted(buf)) throw new Error("officecrypto does not consider the file encrypted");
+  });
+
+  await checkAsync("the right password opens it and a wrong one does not", async () => {
+    const buf = await toEncryptedXlsx([["Name"], ["Rajesh Patel"]], "first-key");
+    const opened = await officeCrypto.decrypt(buf, { password: "first-key" });
+    if (opened.subarray(0, 2).toString() !== "PK") throw new Error("the right password did not yield a workbook");
+    let rejected = false;
+    try {
+      await officeCrypto.decrypt(buf, { password: "not-the-password" });
+    } catch {
+      rejected = true;
+    }
+    if (!rejected) throw new Error("a wrong password opened the file");
+  });
+
+  await checkAsync("a locked workbook never leaks its contents in the clear", async () => {
+    const buf = await toEncryptedXlsx([["Phone"], ["+919876543210"]], "first-key");
+    if (buf.includes(Buffer.from("+919876543210", "utf8"))) {
+      throw new Error("the phone number is readable inside the encrypted file");
     }
   });
 

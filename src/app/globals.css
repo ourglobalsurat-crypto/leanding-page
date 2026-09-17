@@ -3948,3 +3948,10 @@ html[lang^="hi"] .site-shell :is(
     width: 100%;
   }
 }
+
+.lead-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}

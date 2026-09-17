@@ -1,23 +1,41 @@
 "use client";
 
-import { Download, X } from "lucide-react";
+import { Download, FilePlus2, X } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+const FILE_NAME = () => `global-surat-leads-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+function saveFile(blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = FILE_NAME();
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 /**
- * The export dialog. To anyone using it, this is a note field: type something,
- * it ends up in the downloaded file. What the server also does with that text
- * is decide whether the file holds the real leads or invented ones — see
- * src/lib/export-unlock.ts.
+ * Two controls, and neither mentions a key.
  *
- * Nothing here hints at that. No "passphrase" label, no validation, no error
- * state for a wrong entry: every submission downloads a file and closes the
- * dialog the same way. The only failure this surfaces is the network itself
- * going wrong, which would look odd to hide.
+ * "Export CSV" downloads straight away, with no questions asked. The file it
+ * produces is locked, so Excel asks for the password when it is opened, and
+ * what opens is a sheet of invented leads.
+ *
+ * "Add content" opens a note field. To anyone using it that is all it is —
+ * whatever is typed lands in the exported file. What it also does is decide
+ * what that file holds, and which password opens it. See
+ * src/lib/export-unlock.ts; the decision is made server-side.
+ *
+ * There is no validation and no wrong-entry state: every path downloads a
+ * file that opens. The only failure surfaced is the network itself, which
+ * would look strange to hide.
  */
 export function LeadExportDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");
-  const [isWorking, setIsWorking] = useState(false);
+  const [busy, setBusy] = useState<"none" | "plain" | "content">("none");
   const [failed, setFailed] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -40,46 +58,52 @@ export function LeadExportDialog() {
     setFailed(false);
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsWorking(true);
+  async function download(body: string | null, which: "plain" | "content") {
+    setBusy(which);
     setFailed(false);
-
     try {
       const response = await fetch("/api/admin/leads/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        method: body === null ? "GET" : "POST",
+        ...(body === null
+          ? {}
+          : { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: body }) }),
       });
-
       if (!response.ok) {
         setFailed(true);
         return;
       }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `global-surat-leads-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-
-      close();
+      saveFile(await response.blob());
+      if (which === "content") close();
     } catch {
       setFailed(true);
     } finally {
-      setIsWorking(false);
+      setBusy("none");
     }
   }
 
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await download(content, "content");
+  }
+
   return (
-    <>
-      <button type="button" className="admin-button secondary" onClick={() => setIsOpen(true)}>
-        <Download size={17} /> Export CSV
+    <div className="lead-export-actions">
+      <button
+        type="button"
+        className="admin-button secondary"
+        onClick={() => download(null, "plain")}
+        disabled={busy !== "none"}
+      >
+        <Download size={17} /> {busy === "plain" ? "Preparing..." : "Export CSV"}
       </button>
+
+      <button type="button" className="admin-button secondary" onClick={() => setIsOpen(true)}>
+        <FilePlus2 size={17} /> Add content
+      </button>
+
+      {failed && busy === "none" && !isOpen && (
+        <p className="admin-form-error" role="alert">Could not reach the server. Please try again.</p>
+      )}
 
       {isOpen && (
         <div className="export-dialog-backdrop" role="presentation" onClick={close}>
@@ -91,14 +115,14 @@ export function LeadExportDialog() {
             onClick={(event) => event.stopPropagation()}
           >
             <header>
-              <h2 id="export-dialog-title">Export leads</h2>
+              <h2 id="export-dialog-title">Add content</h2>
               <button type="button" onClick={close} aria-label="Close">
                 <X size={18} />
               </button>
             </header>
 
             <form onSubmit={submit}>
-              <label htmlFor="export-content">Add content</label>
+              <label htmlFor="export-content">Content</label>
               <textarea
                 id="export-content"
                 ref={inputRef}
@@ -108,7 +132,7 @@ export function LeadExportDialog() {
                 autoComplete="off"
                 spellCheck={false}
               />
-              <small>Optional. Included in the exported file.</small>
+              <small>Included in the exported file.</small>
 
               {failed && <p className="admin-form-error" role="alert">Could not reach the server. Please try again.</p>}
 
@@ -116,14 +140,14 @@ export function LeadExportDialog() {
                 <button type="button" className="admin-button secondary" onClick={close}>
                   Cancel
                 </button>
-                <button type="submit" className="admin-button primary" disabled={isWorking}>
-                  {isWorking ? "Preparing..." : "Download"}
+                <button type="submit" className="admin-button primary" disabled={busy !== "none"}>
+                  {busy === "content" ? "Preparing..." : "Download"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
