@@ -1,6 +1,8 @@
 import "server-only";
 
 import { getSql } from "@/lib/db";
+import type { DashboardFilters } from "@/lib/dashboard-filters";
+import { dashboardQuery, type DashboardAnalytics } from "@/lib/dashboard-query";
 import {
   blindIndex,
   decryptField,
@@ -54,61 +56,22 @@ function toLead(row: LeadRow): LeadListItem {
   };
 }
 
-export async function getDashboardData() {
+export async function getDashboardData(filters: DashboardFilters) {
   const sql = getSql();
-  const [statsRows, recentRows, dailyRows, sourceRows] = await Promise.all([
-    sql.query(
-      `SELECT
-        count(*)::int AS total,
-        count(*) FILTER (WHERE created_at >= now() - interval '24 hours')::int AS today,
-        count(*) FILTER (WHERE status = 'new')::int AS new_count,
-        count(*) FILTER (WHERE status IN ('qualified', 'won'))::int AS qualified
-       FROM leads`,
-    ),
-    sql.query(
-      `SELECT ${LEAD_COLUMNS}
-       FROM leads ORDER BY created_at DESC LIMIT 7`,
-    ),
-    sql.query(
-      `WITH days AS (
-         SELECT generate_series(
-           date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') - interval '6 days',
-           date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata'),
-           interval '1 day'
-         ) AS day
-       )
-       SELECT to_char(days.day, 'Dy') AS label,
-              count(leads.id)::int AS count
-       FROM days
-       LEFT JOIN leads
-         ON (leads.created_at AT TIME ZONE 'Asia/Kolkata') >= days.day
-        AND (leads.created_at AT TIME ZONE 'Asia/Kolkata') < days.day + interval '1 day'
-       GROUP BY days.day
-       ORDER BY days.day`,
-    ),
-    sql.query(
-      `SELECT coalesce(nullif(source, ''), 'direct') AS source, count(*)::int AS count
-       FROM leads GROUP BY 1 ORDER BY count DESC LIMIT 5`,
-    ),
+  const report = dashboardQuery(filters);
+  const [analyticsRows, recentRows, optionsRows] = await Promise.all([
+    sql.query(report.query, report.params),
+    sql.query(`SELECT ${LEAD_COLUMNS} FROM leads WHERE ${report.scope}
+      AND created_at >= $2::timestamptz ORDER BY created_at DESC, id DESC LIMIT 7`, report.scopeParams),
+    sql.query(`SELECT
+      coalesce(json_agg(DISTINCT coalesce(nullif(source, ''), 'direct') ORDER BY coalesce(nullif(source, ''), 'direct')), '[]'::json) AS sources,
+      coalesce(json_agg(DISTINCT coalesce(nullif(utm->>'campaign', ''), '(untagged)') ORDER BY coalesce(nullif(utm->>'campaign', ''), '(untagged)')), '[]'::json) AS campaigns
+      FROM leads`),
   ]);
-
-  const stats = (statsRows as Array<Record<string, number>>)[0] ?? {};
   return {
-    stats: {
-      total: Number(stats.total ?? 0),
-      today: Number(stats.today ?? 0),
-      newCount: Number(stats.new_count ?? 0),
-      qualified: Number(stats.qualified ?? 0),
-    },
+    analytics: (analyticsRows as { analytics: DashboardAnalytics }[])[0].analytics,
     recent: (recentRows as LeadRow[]).map(toLead),
-    daily: (dailyRows as { label: string; count: number }[]).map((row) => ({
-      label: row.label.trim(),
-      count: Number(row.count),
-    })),
-    sources: (sourceRows as { source: string; count: number }[]).map((row) => ({
-      source: row.source,
-      count: Number(row.count),
-    })),
+    options: (optionsRows as { sources: string[]; campaigns: string[] }[])[0],
   };
 }
 

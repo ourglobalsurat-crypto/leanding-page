@@ -19,6 +19,22 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Versioned forms and answer snapshots, so old leads keep the exact question text and options they answered
 - Neon Postgres persistence, server-side validation, signed sessions, password hashing, rate limits, honeypot protection, idempotent submissions, and security headers
 
+## Performance dashboard
+
+The admin overview supports Today, Yesterday, Last 7 days, Last 30 days, This month, and custom ranges of up to 90 calendar days. Source, campaign, and current lead status filters apply to every metric, chart, and recent-lead row. Filters persist in the URL; use Apply filters to update the report or the refresh button to fetch new submissions.
+
+All date boundaries and hourly buckets use Asia/Kolkata (IST). Period comparisons use the preceding equal number of calendar days with the same filters. A period ending today includes a partial day, while its comparison contains full days. Qualification rate counts leads currently marked qualified or won, divided by selected leads; this is not a visitor conversion rate. The status chart shows current statuses, not historical stage transitions. Untagged campaigns are shown separately, and ad spend, CPL, and ROAS are not inferred from lead counts.
+
+Dashboard checks:
+
+```bash
+npm run test:dashboard
+npm run test:dashboard -- --database
+npm run qa:dashboard
+```
+
+The optional database check uses read-only SQL fixtures and does not insert leads. Browser QA requires a running local app and the existing admin credentials in `.env.local`; it checks authentication, filters, date validation, chart views, empty results, and desktop/mobile layouts without modifying leads. Screenshots are saved under `artifacts/qa/`.
+
 ## Local setup
 
 Requires Node.js 20.9 or newer.

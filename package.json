@@ -14,7 +14,9 @@
     "db:migrate-encrypt-leads": "tsx scripts/migrate-encrypt-leads.ts",
     "test:lead-crypto": "tsx scripts/test-lead-crypto.ts",
     "qa:e2e": "node scripts/qa.mjs",
-    "test:export-unlock": "tsx scripts/test-export-unlock.ts"
+    "test:export-unlock": "tsx scripts/test-export-unlock.ts",
+    "test:dashboard": "tsx scripts/test-dashboard.ts",
+    "qa:dashboard": "node scripts/qa-dashboard.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
