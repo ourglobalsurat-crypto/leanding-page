@@ -236,6 +236,16 @@ Instead `src/lib/crm-forward.ts` posts to the same JSON endpoint from the server
 
 Each send takes a fresh single-use challenge with a `GET`, then posts the lead. The lead's own UUID travels as the CRM's `request_id`, which is what the CRM deduplicates on, so the three retry attempts (1s and 4s apart, 15s timeout each) cannot create duplicate CRM records. Contact details fill the CRM's name, phone and email fields; every other answer goes into its per-question fields and is repeated in the enquiry body, with option ids rendered as their English labels. The lead's UUID is included as a **Lead ID** field so a CRM record can be matched back to the full answer history and notes in the lead desk.
 
+### Checking the connection
+
+```bash
+npm run crm:check
+```
+
+This fetches the CRM's form configuration and stops there — it never posts, so it cannot create a CRM record. It reports `OK` with the form's name when the token is valid and the CRM is reachable, `OFF` when `CRM_LEAD_FORM_URL` is unset, and `FAIL` with the reason when the link or token is wrong. It prints only the first characters of the token, never the whole value.
+
+**It checks the environment it runs in, which locally means `.env.local`.** Setting the variable there does nothing for your deployed site: hosts keep their own environment, and Vercel bakes variables in at build time, so a variable added after a deployment does not reach it until you redeploy. To check production, submit a lead and read the deployed logs — an unset variable logs `CRM forwarding is OFF` once per server process.
+
 ### When it fails
 
 The CRM is a mirror, never the system of record. A CRM that is slow, unreachable or misconfigured cannot fail a submission, delay the thank-you page, or lose a lead — the lead is already in the database before forwarding starts. After three failed attempts the server logs `CRM forwarding failed for lead <uuid>` with the lead's ID and no contact details; look that ID up in the lead desk and enter it in the CRM by hand. A lead with no name or no phone number is skipped without being sent, because the CRM rejects those.

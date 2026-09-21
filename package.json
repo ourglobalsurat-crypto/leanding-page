@@ -19,6 +19,7 @@
     "qa:dashboard": "node scripts/qa-dashboard.mjs",
     "test:lead-deletion": "tsx scripts/test-lead-deletion.ts",
     "test:crm-forward": "tsx scripts/test-crm-forward.ts",
+    "crm:check": "tsx scripts/check-crm.ts",
     "qa:lead-deletion": "node scripts/qa-lead-deletion.mjs"
   },
   "dependencies": {
