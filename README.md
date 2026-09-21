@@ -20,6 +20,14 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Optional server-side forwarding of every stored lead into the external Leadgen CRM, with retries and idempotent delivery
 - Neon Postgres persistence, server-side validation, signed sessions, password hashing, rate limits, honeypot protection, idempotent submissions, and security headers
 
+## Permanent lead deletion
+
+Owners and editors can delete a lead from its row or detail page. On the lead list, use the row checkboxes or **Select all shown leads**, then **Delete selected**. Select-all covers only the currently displayed, filtered results (up to 250), not unseen records. Changing the search or status filter clears the selection.
+
+The confirmation shows the selected count and names. Cancel or Escape closes it without deleting anything. Confirmed deletion permanently removes the selected database records and their related questionnaire answers and notes. It cannot be undone in the app. Existing downloaded exports and database backups are separate copies. Audit entries retain record IDs and the deleting administrator, without copying lead contact data.
+
+The server rejects unauthenticated users, read-only viewers, cross-origin requests, invalid IDs, missing confirmation and batches larger than 250. Deletion and its audit entries run in one atomic database statement; repeat requests safely report only records actually removed.
+
 ## Performance dashboard
 
 The admin overview supports Today, Yesterday, Last 7 days, Last 30 days, This month, and custom ranges of up to 90 calendar days. Source, campaign, and current lead status filters apply to every metric, chart, and recent-lead row. Filters persist in the URL; use Apply filters to update the report or the refresh button to fetch new submissions.

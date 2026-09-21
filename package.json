@@ -17,7 +17,9 @@
     "test:export-unlock": "tsx scripts/test-export-unlock.ts",
     "test:dashboard": "tsx scripts/test-dashboard.ts",
     "qa:dashboard": "node scripts/qa-dashboard.mjs",
-    "test:crm-forward": "tsx scripts/test-crm-forward.ts"
+    "test:lead-deletion": "tsx scripts/test-lead-deletion.ts",
+    "test:crm-forward": "tsx scripts/test-crm-forward.ts",
+    "qa:lead-deletion": "node scripts/qa-lead-deletion.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

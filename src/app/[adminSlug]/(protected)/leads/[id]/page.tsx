@@ -2,6 +2,9 @@ import { ArrowLeft, CalendarClock, Link2, Mail, MapPin, MessageCircle, Phone, Sh
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { LeadDeleteButton } from "@/components/lead-delete-button";
+import { requireAdmin } from "@/lib/auth";
+import { assertValidAdminSlug } from "@/lib/admin-routes";
 import { LeadNoteForm } from "@/components/lead-note-form";
 import { LeadStatusControl } from "@/components/lead-status-control";
 import { getLeadDetail } from "@/lib/admin-data";
@@ -26,6 +29,8 @@ export default async function LeadDetailPage({
   params: Promise<{ adminSlug: string; id: string }>;
 }) {
   const { adminSlug, id } = await params;
+  assertValidAdminSlug(adminSlug);
+  const admin = await requireAdmin(adminSlug);
   const lead = await getLeadDetail(id);
   if (!lead) notFound();
   const whatsappDigits = lead.phone?.replace(/\D/g, "");
@@ -35,7 +40,9 @@ export default async function LeadDetailPage({
       <Link className="admin-back-link" href={`/${adminSlug}/leads`}><ArrowLeft size={16} /> Back to all leads</Link>
       <div className="lead-detail-heading">
         <div><span className="admin-page-kicker">LEAD DETAIL</span><h1>{lead.name || "Unnamed lead"}</h1><p>Received {formatDate(lead.createdAt)}</p></div>
-        <LeadStatusControl id={lead.id} initialStatus={lead.status} />
+        <div className="lead-detail-actions"><LeadStatusControl id={lead.id} initialStatus={lead.status} />
+          {(admin.role === "owner" || admin.role === "editor") && <LeadDeleteButton leads={[lead]} redirectTo={`/${adminSlug}/leads`} />}
+        </div>
       </div>
 
       <div className="lead-detail-grid">

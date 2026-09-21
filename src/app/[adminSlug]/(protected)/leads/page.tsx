@@ -1,14 +1,12 @@
-import { ArrowRight, Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
 import Link from "next/link";
 
 import { LeadExportDialog } from "@/components/lead-export-dialog";
-import { LeadStatusControl } from "@/components/lead-status-control";
+import { LeadsTable } from "@/components/leads-table";
+import { requireAdmin } from "@/lib/auth";
+import { assertValidAdminSlug } from "@/lib/admin-routes";
 import { getLeads } from "@/lib/admin-data";
 import { leadStatuses } from "@/lib/types";
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(value));
-}
 
 export default async function LeadsPage({
   params: paramsPromise,
@@ -18,6 +16,8 @@ export default async function LeadsPage({
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
   const { adminSlug } = await paramsPromise;
+  assertValidAdminSlug(adminSlug);
+  const admin = await requireAdmin(adminSlug);
   const params = await searchParams;
   const leads = await getLeads({ search: params.q, status: params.status });
 
@@ -35,18 +35,7 @@ export default async function LeadsPage({
         {(params.q || params.status) && <Link href={`/${adminSlug}/leads`}>Clear</Link>}
       </form>
 
-      <section className="admin-card leads-list-card">
-        <header><div><span className="admin-page-kicker">RESULTS</span><h2>{leads.length} {leads.length === 1 ? "lead" : "leads"}</h2></div><Users size={22} /></header>
-        <div className="admin-table-wrap">
-          <table className="admin-table leads-table">
-            <thead><tr><th>Lead</th><th>Phone / email</th><th>City</th><th>Source</th><th>Received</th><th>Status</th><th /></tr></thead>
-            <tbody>
-              {leads.map((lead) => <tr key={lead.id}><td><strong>{lead.name || "Unnamed lead"}</strong><small>{lead.language.toUpperCase()} response</small></td><td><strong>{lead.phone || "—"}</strong><small>{lead.email || ""}</small></td><td>{lead.city || "—"}</td><td><span className="source-pill">{lead.source || "direct"}</span></td><td>{formatDate(lead.createdAt)}</td><td><LeadStatusControl id={lead.id} initialStatus={lead.status} /></td><td><Link className="table-arrow" href={`/${adminSlug}/leads/${lead.id}`} aria-label={`View details for ${lead.name || "lead"}`}><ArrowRight size={16} /></Link></td></tr>)}
-              {!leads.length && <tr><td colSpan={7} className="empty-table"><Users size={24} /> No leads match these filters.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <LeadsTable key={JSON.stringify([params.q || "", params.status || ""])} leads={leads} adminSlug={adminSlug} canDelete={admin.role === "owner" || admin.role === "editor"} />
     </main>
   );
 }
