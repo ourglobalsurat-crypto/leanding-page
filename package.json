@@ -16,7 +16,8 @@
     "qa:e2e": "node scripts/qa.mjs",
     "test:export-unlock": "tsx scripts/test-export-unlock.ts",
     "test:dashboard": "tsx scripts/test-dashboard.ts",
-    "qa:dashboard": "node scripts/qa-dashboard.mjs"
+    "qa:dashboard": "node scripts/qa-dashboard.mjs",
+    "test:crm-forward": "tsx scripts/test-crm-forward.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

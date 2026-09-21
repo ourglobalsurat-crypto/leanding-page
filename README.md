@@ -17,6 +17,7 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Draft-and-publish questionnaire builder with add, edit, hide, delete, and reorder controls
 - Short text, long text, email, phone, number, date, dropdown, single choice, checkboxes, yes/no, and rating question types
 - Versioned forms and answer snapshots, so old leads keep the exact question text and options they answered
+- Optional server-side forwarding of every stored lead into the external Leadgen CRM, with retries and idempotent delivery
 - Neon Postgres persistence, server-side validation, signed sessions, password hashing, rate limits, honeypot protection, idempotent submissions, and security headers
 
 ## Performance dashboard
@@ -77,6 +78,7 @@ The setup script is idempotent. Running it again updates the configured admin pa
 | `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email — cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
 | `LEAD_EXPORT_REAL_PASSPHRASE` | Opens a lead export containing the real leads, and typed into "Add content" to produce one. See [Lead export and the decoy file](#lead-export-and-the-decoy-file) |
 | `LEAD_EXPORT_DECOY_PASSPHRASE` | Opens the export that the plain **Export CSV** button produces, which contains invented leads |
+| `CRM_LEAD_FORM_URL` | Optional. The Leadgen CRM connection link, including its `?form=` token. Set it to mirror every stored lead into the CRM; unset disables forwarding. See [External CRM forwarding](#external-crm-forwarding) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Digits-only WhatsApp number including country code |
 | `NEXT_PUBLIC_CONTACT_PHONE` | Display phone number |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Display contact email |
@@ -212,6 +214,26 @@ The Content Security Policy in `next.config.ts` allowlists only the Google origi
 
 GTM Preview and Tag Assistant frame the site, so they are blocked by `frame-ancestors 'none'` and `X-Frame-Options: DENY`. Relax those two headers temporarily if you need to debug the container in a deployed environment, and restore them afterwards.
 
+## External CRM forwarding
+
+Every stored lead is also mirrored into the external Leadgen CRM at `leadgen.globalsurat.com`, so the sales team can work leads there instead of only in the lead desk. Set `CRM_LEAD_FORM_URL` to the connection link the CRM gives you — the one behind its **Send an enquiry** button, including the `?form=` token — and forwarding turns itself on. Leave it unset and nothing is sent anywhere; the lead desk is unaffected either way.
+
+**The `?form=` token is a credential.** Anyone holding it can post leads into your CRM account. Keep it in `.env.local` and in your host's environment settings, never in a commit and never in client-side code. Rotate it in the CRM if it leaks.
+
+### How it works
+
+The CRM ships a browser connector (`assets/lead-form.js`) that draws its own enquiry form. This site deliberately does not use it. That script binds a capturing `submit` listener and calls `stopImmediatePropagation()`, which would break this app's own React submit handler, and it reads answers off mounted `<input name="...">` elements — but the public form asks one question at a time, so most inputs are unmounted by the last step. The CSP in `next.config.ts` would also block its request, because `connect-src` allows only `'self'` and the Google Tag Manager origins.
+
+Instead `src/lib/crm-forward.ts` posts to the same JSON endpoint from the server, and `src/app/api/leads/route.ts` calls it inside Next's `after()` — **after** the lead is committed to Postgres and the visitor's response has been sent. The JSON endpoint (`website-leads.php`) is derived from the link you paste, exactly as the connector derives it from its own script URL.
+
+Each send takes a fresh single-use challenge with a `GET`, then posts the lead. The lead's own UUID travels as the CRM's `request_id`, which is what the CRM deduplicates on, so the three retry attempts (1s and 4s apart, 15s timeout each) cannot create duplicate CRM records. Contact details fill the CRM's name, phone and email fields; every other answer goes into its per-question fields and is repeated in the enquiry body, with option ids rendered as their English labels. The lead's UUID is included as a **Lead ID** field so a CRM record can be matched back to the full answer history and notes in the lead desk.
+
+### When it fails
+
+The CRM is a mirror, never the system of record. A CRM that is slow, unreachable or misconfigured cannot fail a submission, delay the thank-you page, or lose a lead — the lead is already in the database before forwarding starts. After three failed attempts the server logs `CRM forwarding failed for lead <uuid>` with the lead's ID and no contact details; look that ID up in the lead desk and enter it in the CRM by hand. A lead with no name or no phone number is skipped without being sent, because the CRM rejects those.
+
+> Forwarding puts a **second, unencrypted copy** of each lead's name, phone number and email address inside the CRM. That is the point of the integration, but it does mean the protection described in [Lead data encryption](#lead-data-encryption) covers this database only, not the CRM. Whoever can log into the CRM can read every forwarded lead's contact details.
+
 ## Verification
 
 ```bash
@@ -220,7 +242,10 @@ npm run lint
 npm run build
 npm run test:lead-crypto
 npm run test:export-unlock
+npm run test:crm-forward
 ```
+
+`test:crm-forward` stubs the network — it never contacts the real CRM and never creates a CRM record.
 
 For the browser flow, start the app and run:
 

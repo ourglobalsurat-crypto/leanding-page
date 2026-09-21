@@ -1,5 +1,8 @@
 import crypto from "node:crypto";
 
+import { after } from "next/server";
+
+import { forwardLeadToCrm, landingPageUrl } from "@/lib/crm-forward";
 import { getSql } from "@/lib/db";
 import {
   blindIndex,
@@ -182,18 +185,20 @@ export async function POST(request: Request) {
       return successResponse(existing.id, payload.language, existingGrowthPath);
     }
 
-    const byKey = new Map(validatedAnswers.map((item) => [item.question.key, item.value]));
-    const valueForRole = (role: "contact_name" | "contact_phone", legacyKey: string) =>
-      validatedAnswers.find((item) => item.question.config.systemRole === role)?.value
-      ?? byKey.get(legacyKey);
-    const nameValue = valueForRole("contact_name", "full_name");
-    const phoneValue = valueForRole("contact_phone", "phone");
-    const emailValue = byKey.get("email");
-    const cityValue = byKey.get("city");
-    const name = typeof nameValue === "string" ? nameValue : null;
-    const phone = typeof phoneValue === "string" ? phoneValue : null;
-    const email = typeof emailValue === "string" ? emailValue : null;
-    const city = typeof cityValue === "string" ? cityValue : null;
+    // The whole answer is kept, not just its value: the CRM forwarder needs the
+    // keys these four slots consumed so it does not repeat them as extra fields.
+    const answerByKey = new Map(validatedAnswers.map((item) => [item.question.key, item]));
+    const answerForRole = (role: "contact_name" | "contact_phone", legacyKey: string) =>
+      validatedAnswers.find((item) => item.question.config.systemRole === role)
+      ?? answerByKey.get(legacyKey);
+    const nameAnswer = answerForRole("contact_name", "full_name");
+    const phoneAnswer = answerForRole("contact_phone", "phone");
+    const emailAnswer = answerByKey.get("email");
+    const cityAnswer = answerByKey.get("city");
+    const name = typeof nameAnswer?.value === "string" ? nameAnswer.value : null;
+    const phone = typeof phoneAnswer?.value === "string" ? phoneAnswer.value : null;
+    const email = typeof emailAnswer?.value === "string" ? emailAnswer.value : null;
+    const city = typeof cityAnswer?.value === "string" ? cityAnswer.value : null;
     const leadId = crypto.randomUUID();
 
     // Phone and email are never written in plain text — see src/lib/lead-crypto.ts.
@@ -267,6 +272,36 @@ export async function POST(request: Request) {
 
     await sql.transaction(queries);
     const growthPath = getSelectedGrowthPath(questions, payload.answers) ?? "general";
+
+    // Mirror the lead into the external CRM. This runs after the response is
+    // sent: the lead is already committed above, so a slow or unreachable CRM
+    // must never hold up the visitor's thank-you page or fail their submission.
+    after(async () => {
+      try {
+        const result = await forwardLeadToCrm({
+          leadId,
+          name,
+          phone,
+          email,
+          language: payload.language,
+          growthPath,
+          pageUrl: landingPageUrl(request),
+          utm,
+          answers: validatedAnswers,
+          contactKeys: [nameAnswer, phoneAnswer, emailAnswer]
+            .map((answer) => answer?.question.key)
+            .filter((key): key is string => Boolean(key)),
+        });
+        if (result.status === "skipped") {
+          console.warn(`Lead ${leadId} was not sent to the CRM: ${result.reason}`);
+        }
+      } catch (error) {
+        // The lead desk still has the full record. Log the id — never the
+        // contact details — so it can be re-entered in the CRM by hand.
+        console.error(`CRM forwarding failed for lead ${leadId}.`, error);
+      }
+    });
+
     return successResponse(leadId, payload.language, growthPath, 201);
   } catch (error) {
     const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
