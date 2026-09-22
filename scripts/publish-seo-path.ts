@@ -201,7 +201,7 @@ async function main() {
        FROM questions
        WHERE version_id = $1 AND question_key = $2 AND is_active = true
        LIMIT 1`,
-      [form.published_version_id, "seo_track"],
+      [form.published_version_id, "seo_goal"],
     )) as Array<Record<string, number>>;
 
     if (published[0]) {

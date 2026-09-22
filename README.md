@@ -201,9 +201,11 @@ Edits are saved to a draft and do not immediately affect live visitors. Select *
 
 The first question selects the `lead_generation`, `d2c_growth`, or `seo` path. Questions assigned to one path remain hidden from visitors on every other path; shared questions, including the required name and WhatsApp-number fields, appear in all of them. The admin questionnaire editor allows non-system questions to be assigned to **All paths** or to a single path, and, inside a path that branches again, to **All tracks** or to a single track. Core selector and contact roles are protected so an edit cannot make the published flow impossible to submit.
 
-The SEO path branches once more, because SEO is planned around the same two business models the other paths cover: a visitor who chooses SEO then says whether they want enquiries or online product sales. That second answer is a **track**, and `config.track` limits a question to one track of its path. The Lead Generation track asks which area to rank in; the D2C track asks about monthly online revenue; the website link, past SEO work, and planned monthly budget are asked on both.
+The SEO path branches once more. It opens by asking what the visitor wants SEO to achieve, and that answer is a **track**: `Generate more leads` opens the Lead Generation track, which asks where customers should come from, and `Increase online sales` opens the D2C Growth track, which asks about monthly online sales. The website URL, past SEO investment and planned monthly budget are asked whichever goal is chosen. `config.track` is what limits a question to one track of its path.
 
-A path that branches carries exactly one **path-track selector**, which must be that path's first visible question and must keep both track options. A question can only be limited to a track inside a path that has such a selector. Paths and tracks need not be the same length: the progress indicator shows the longest run still reachable from the current answers, so it narrows as the visitor chooses and never jumps backwards.
+A goal does not have to lead to a track. `Get more local customers`, `Increase relevant website traffic`, `Improve Google rankings` and `Not sure yet` skip the track question, so nobody is pushed down a branch that does not apply to them, and the SEO path is seven questions instead of eight.
+
+A path that branches carries exactly one **path-track selector**. It must be that path's first visible question and must keep an answer for each track; it may offer further answers that lead to no track. A question can only be limited to a track inside a path that has such a selector. Paths and tracks need not be the same length: the progress indicator shows the longest run still reachable from the current answers, so it narrows as the visitor chooses and never grows.
 
 Question keys should stay stable once they are used for important contact fields. The default `full_name`, `phone`, `email`, and `city` keys are also copied into searchable lead columns. Server-side validation independently reconstructs the selected path, rejects hidden or unrecognized answers, and validates every visible required question.
 
@@ -330,6 +332,17 @@ It rewrites the text of the published and draft questions in place. Keys,
 types, paths, tracks, order and option ids are untouched, archived versions keep
 their original wording, and submitted leads are unaffected because their answers
 carry their own question snapshot.
+
+### Changing the SEO questions
+
+The SEO section is defined in `src/lib/default-questionnaire.ts`, but visitors read the copy in the database. After editing that file:
+
+```bash
+npm run db:sync-seo-questions            # dry run, lists remove/rewrite/add
+npx tsx scripts/sync-seo-questions.ts --apply
+```
+
+It makes the draft's SEO section match the file and publishes it. Only questions on the SEO path are touched: the other two paths, the service-path selector and the shared contact questions keep whatever wording an admin has given them. A question that only changed wording keeps its database row. Removals happen in the draft, so the archived published version keeps the rows that existing lead answers point at.
 
 ### Adding the SEO path to a live questionnaire
 

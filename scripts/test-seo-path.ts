@@ -113,11 +113,11 @@ check("the paid paths stay untouched by the SEO work", () => {
   ]);
 });
 
-check("choosing SEO asks which business model before anything else", () => {
+check("choosing SEO asks for the goal first, then the website", () => {
   const visible = getVisibleQuestions(defaultQuestions, { growth_path: "seo" });
   assert.deepEqual(keys(visible), [
     "growth_path",
-    "seo_track",
+    "seo_goal",
     "seo_website_url",
     "seo_experience",
     "seo_monthly_budget",
@@ -126,17 +126,17 @@ check("choosing SEO asks which business model before anything else", () => {
   ]);
   // The track-only questions stay hidden until the track selector is answered.
   assert.ok(!keys(visible).includes("seo_lead_target_location"));
-  assert.ok(!keys(visible).includes("seo_d2c_monthly_revenue"));
+  assert.ok(!keys(visible).includes("seo_d2c_monthly_sales"));
 });
 
-check("the SEO Lead Generation track asks where to rank", () => {
+check("the SEO Lead Generation track asks where customers should come from", () => {
   const visible = getVisibleQuestions(defaultQuestions, {
     growth_path: "seo",
-    seo_track: "lead_generation",
+    seo_goal: "lead_generation",
   });
   assert.deepEqual(keys(visible), [
     "growth_path",
-    "seo_track",
+    "seo_goal",
     "seo_website_url",
     "seo_lead_target_location",
     "seo_experience",
@@ -146,16 +146,16 @@ check("the SEO Lead Generation track asks where to rank", () => {
   ]);
 });
 
-check("the SEO D2C track asks about online revenue instead", () => {
+check("the SEO D2C Growth track asks about monthly online sales instead", () => {
   const visible = getVisibleQuestions(defaultQuestions, {
     growth_path: "seo",
-    seo_track: "d2c_growth",
+    seo_goal: "d2c_growth",
   });
   assert.deepEqual(keys(visible), [
     "growth_path",
-    "seo_track",
+    "seo_goal",
     "seo_website_url",
-    "seo_d2c_monthly_revenue",
+    "seo_d2c_monthly_sales",
     "seo_experience",
     "seo_monthly_budget",
     "full_name",
@@ -182,35 +182,52 @@ check("every SEO question is required and fully translated", () => {
   }
 });
 
-check("the progress count never jumps backwards as the branch narrows", () => {
-  const atStart = getExpectedQuestionCount(defaultQuestions, {});
-  const atTrack = getExpectedQuestionCount(defaultQuestions, { growth_path: "seo" });
-  const settled = getExpectedQuestionCount(defaultQuestions, {
-    growth_path: "seo",
-    seo_track: "lead_generation",
-  });
-  assert.equal(atStart, 8);
-  assert.equal(atTrack, 8);
-  assert.equal(settled, 8);
-  assert.equal(
-    getExpectedQuestionCount(defaultQuestions, { growth_path: "lead_generation" }),
-    6,
-  );
+check("the progress count narrows with the branch and never grows", () => {
+  const count = (answers: Record<string, unknown>) =>
+    getExpectedQuestionCount(defaultQuestions, answers);
+
+  assert.equal(count({}), 8);
+  assert.equal(count({ growth_path: "seo" }), 8);
+  assert.equal(count({ growth_path: "seo", seo_goal: "lead_generation" }), 8);
+  assert.equal(count({ growth_path: "seo", seo_goal: "d2c_growth" }), 8);
+
+  // A goal that leads to no track settles the branch one question shorter.
+  for (const goal of ["local_customers", "website_traffic", "google_rankings", "not_sure"]) {
+    assert.equal(count({ growth_path: "seo", seo_goal: goal }), 7, `${goal} count`);
+  }
+
+  assert.equal(count({ growth_path: "lead_generation" }), 6);
+  assert.equal(count({ growth_path: "d2c_growth" }), 6);
+});
+
+check("a goal outside the two tracks skips the track question", () => {
+  for (const goal of ["local_customers", "website_traffic", "google_rankings", "not_sure"]) {
+    const visible = getVisibleQuestions(defaultQuestions, { growth_path: "seo", seo_goal: goal });
+    assert.deepEqual(keys(visible), [
+      "growth_path",
+      "seo_goal",
+      "seo_website_url",
+      "seo_experience",
+      "seo_monthly_budget",
+      "full_name",
+      "phone",
+    ], `${goal} shows the wrong questions`);
+  }
 });
 
 check("switching track or path drops the answers left behind", () => {
   const answers = {
     growth_path: "seo",
-    seo_track: "d2c_growth",
-    seo_d2c_monthly_revenue: "below_1l",
+    seo_goal: "d2c_growth",
+    seo_d2c_monthly_sales: "under_1l",
     seo_lead_target_location: "gujarat",
     lead_business_model: "b2b",
     website_url: "https://left-over.example",
   };
   assert.deepEqual(Object.keys(pruneHiddenAnswers(defaultQuestions, answers)).sort(), [
     "growth_path",
-    "seo_d2c_monthly_revenue",
-    "seo_track",
+    "seo_d2c_monthly_sales",
+    "seo_goal",
   ]);
 });
 
@@ -230,7 +247,7 @@ check("a questionnaire whose track has nowhere to go is refused", () => {
 
 check("the track selector must open its own path", () => {
   const moved = defaultQuestions.map((question) =>
-    question.key === "seo_track" ? { ...question, position: 99 } : question,
+    question.key === "seo_goal" ? { ...question, position: 99 } : question,
   );
   assert.match(
     String(validateQuestionnaireFlow(moved)),
@@ -250,10 +267,10 @@ check("the migration appends SEO without disturbing the existing paths", () => {
     "seo",
   ]);
   assert.deepEqual(keys(plan.missingSeoQuestions), [
-    "seo_track",
+    "seo_goal",
     "seo_website_url",
     "seo_lead_target_location",
-    "seo_d2c_monthly_revenue",
+    "seo_d2c_monthly_sales",
     "seo_experience",
     "seo_monthly_budget",
   ]);
@@ -277,7 +294,7 @@ check("the migration appends SEO without disturbing the existing paths", () => {
 
   // And the migrated form behaves like the defaults.
   for (const track of growthTracks) {
-    const visible = getVisibleQuestions(plan.ordered, { growth_path: "seo", seo_track: track });
+    const visible = getVisibleQuestions(plan.ordered, { growth_path: "seo", seo_goal: track });
     assert.equal(visible.length, 8);
   }
 });

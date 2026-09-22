@@ -206,25 +206,25 @@ try {
   await page.goto(`${baseUrl}/contact`, { waitUntil: "networkidle" });
   await page.getByRole("radio", { name: /Rank higher on Google/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  assert(await page.getByRole("heading", { name: /What should Google search bring you/ }).isVisible(), "SEO branch did not open on its track selector.");
+  assert(await page.getByRole("heading", { name: /What would you like SEO to help you achieve/ }).isVisible(), "SEO branch did not open on its goal question.");
   assert((await page.locator(".step-count").textContent())?.trim() === "02 / 08", "SEO progress does not use the eight-question visible path.");
-  await page.getByRole("radio", { name: /Online product sales/ }).click();
+  await page.getByRole("radio", { name: /Increase online sales/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByPlaceholder(/yourbusiness\.com/).fill("https://qa-seo.example");
   await page.getByRole("button", { name: "Continue" }).click();
-  assert(await page.getByRole("heading", { name: /average monthly online revenue/ }).isVisible(), "SEO D2C track did not open.");
-  await page.getByRole("radio", { name: /₹1–5 lakh/ }).click();
+  assert(await page.getByRole("heading", { name: /average monthly online sales/ }).isVisible(), "SEO D2C track did not open.");
+  await page.getByRole("radio", { name: /^₹1–5 lakh/ }).click();
   await page.getByRole("button", { name: "Back" }).click();
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("radio", { name: /Calls and enquiries/ }).click();
+  await page.getByRole("radio", { name: /Generate more leads/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  assert(await page.getByRole("heading", { name: /Which area do you want to rank in on Google/ }).isVisible(), "SEO Lead Generation track did not open after switching tracks.");
-  await page.getByRole("radio", { name: /Gujarat/ }).click();
+  assert(await page.getByRole("heading", { name: /Where do you want to attract customers from/ }).isVisible(), "SEO Lead Generation track did not open after switching tracks.");
+  await page.getByRole("radio", { name: /Multiple cities/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("radio", { name: /worked with a freelancer/ }).click();
+  await page.getByRole("radio", { name: /we are currently doing SEO/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("radio", { name: /₹15,000–₹30,000/ }).click();
+  await page.getByRole("radio", { name: /₹25,000–₹50,000/ }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByPlaceholder("Enter your full name").fill(seoName);
   await page.getByRole("button", { name: "Continue" }).click();
@@ -241,16 +241,16 @@ try {
 
   const seoAnswers = seoResponse.request().postDataJSON()?.answers ?? {};
   assert(seoAnswers.growth_path === "seo", "SEO submission has the wrong growth path.");
-  assert(seoAnswers.seo_track === "lead_generation", "SEO submission has the wrong track.");
+  assert(seoAnswers.seo_goal === "lead_generation", "SEO submission has the wrong goal.");
   assert(
     JSON.stringify(Object.keys(seoAnswers).sort()) === JSON.stringify([
       "full_name",
       "growth_path",
       "phone",
       "seo_experience",
+      "seo_goal",
       "seo_lead_target_location",
       "seo_monthly_budget",
-      "seo_track",
       "seo_website_url",
     ]),
     "SEO submission kept an answer from the abandoned D2C track or omitted a visible answer.",

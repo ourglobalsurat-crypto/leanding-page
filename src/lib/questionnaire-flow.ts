@@ -52,6 +52,12 @@ export function getSelectedGrowthPath(
   return isGrowthPath(answer) ? answer : null;
 }
 
+/** True when the answer on file is one of the question's own options. */
+function isAnswered(question: PublicQuestion, answers: AnswerMap) {
+  const answer = answers[question.key];
+  return typeof answer === "string" && question.options.some((option) => option.id === answer);
+}
+
 export function getSelectedGrowthTrack(
   questions: readonly PublicQuestion[],
   answers: AnswerMap,
@@ -118,9 +124,11 @@ export function getExpectedQuestionCount(
   let longest = visibleCount;
   for (const path of reachablePaths) {
     const trackSelector = findActiveTrackSelector(questions, path);
+    // A selector answered with something that leads to no track has still
+    // settled the branch, so both tracks stop counting towards the total.
     const reachableTracks: ReadonlyArray<GrowthTrack | null> = !trackSelector
       ? [null]
-      : selectedTrack
+      : isAnswered(trackSelector, answers)
         ? [selectedTrack]
         : growthTracks;
 
@@ -180,14 +188,17 @@ function validateTracks(
       return `The ${label} path-track selector must be shared by every track of its path.`;
     }
 
+    // Each track has to stay reachable. Extra answers are allowed, and they
+    // simply lead to no track, so a visitor whose goal fits neither one is not
+    // forced down a branch that does not apply to them.
     const optionIds = trackSelector.options.map((option) => option.id);
     const uniqueOptionIds = new Set(optionIds);
-    if (
-      optionIds.length !== growthTracks.length ||
-      uniqueOptionIds.size !== growthTracks.length ||
-      growthTracks.some((track) => !uniqueOptionIds.has(track))
-    ) {
-      return `The ${label} path-track selector must keep exactly these options: ${growthTracks
+    if (uniqueOptionIds.size !== optionIds.length) {
+      return `The ${label} path-track selector has two answers with the same id.`;
+    }
+    const unreachable = growthTracks.filter((track) => !uniqueOptionIds.has(track));
+    if (unreachable.length > 0) {
+      return `The ${label} path-track selector must keep an answer for each track: ${unreachable
         .map((track) => growthTrackLabels[track])
         .join(", ")}.`;
     }
