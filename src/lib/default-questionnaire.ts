@@ -27,9 +27,9 @@ export const defaultQuestions: PublicQuestion[] = [
           gu: "વધુ enquiries મેળવવી",
         },
         description: {
-          en: "Lead Generation — for service, local and B2B businesses",
-          hi: "Lead Generation — service, local और B2B businesses के लिए",
-          gu: "Lead Generation — service, local અને B2B businesses માટે",
+          en: "Lead Generation: for service, local and B2B businesses",
+          hi: "Lead Generation: service, local और B2B businesses के लिए",
+          gu: "Lead Generation: service, local અને B2B businesses માટે",
         },
       },
       {
@@ -40,9 +40,9 @@ export const defaultQuestions: PublicQuestion[] = [
           gu: "Online product sales વધારવી",
         },
         description: {
-          en: "D2C Growth — for brands selling through a website or online store",
-          hi: "D2C Growth — Website या online store से products बेचने वाले brands के लिए",
-          gu: "D2C Growth — Website અથવા online store દ્વારા products વેચતી brands માટે",
+          en: "D2C Growth: for brands selling through a website or online store",
+          hi: "D2C Growth: Website या online store से products बेचने वाले brands के लिए",
+          gu: "D2C Growth: Website અથવા online store દ્વારા products વેચતી brands માટે",
         },
       },
       {
@@ -53,9 +53,9 @@ export const defaultQuestions: PublicQuestion[] = [
           gu: "Google પર ઉપર આવવું",
         },
         description: {
-          en: "SEO — for businesses that want steady customers from Google search",
-          hi: "SEO — Google search से लगातार ग्राहक चाहने वाले businesses के लिए",
-          gu: "SEO — Google search દ્વારા સતત ગ્રાહકો મેળવવા માંગતા businesses માટે",
+          en: "SEO: for businesses that want steady customers from Google search",
+          hi: "SEO: Google search से लगातार ग्राहक चाहने वाले businesses के लिए",
+          gu: "SEO: Google search દ્વારા સતત ગ્રાહકો મેળવવા માંગતા businesses માટે",
         },
       },
     ],
@@ -107,8 +107,8 @@ export const defaultQuestions: PublicQuestion[] = [
         },
         description: {
           en: "Businesses and individual customers",
-          hi: "Businesses और सीधे ग्राहक—दोनों",
-          gu: "Businesses અને સીધા ગ્રાહકો—બંને",
+          hi: "Businesses और सीधे ग्राहक, दोनों",
+          gu: "Businesses અને સીધા ગ્રાહકો, બંને",
         },
       },
     ],
@@ -183,40 +183,40 @@ export const defaultQuestions: PublicQuestion[] = [
         id: "first_time",
         label: {
           en: "No, this is my first time",
-          hi: "नहीं — यह मेरी पहली बार है",
-          gu: "ના — આ મારી પહેલી વાર છે",
+          hi: "नहीं, यह मेरी पहली बार है",
+          gu: "ના, આ મારી પહેલી વાર છે",
         },
       },
       {
         id: "internal",
         label: {
           en: "Yes, managed internally",
-          hi: "हाँ — हमारी अपनी team ने manage किया",
-          gu: "હા — અમારી પોતાની teamએ manage કરી છે",
+          hi: "हाँ, हमारी अपनी team ने manage किया",
+          gu: "હા, અમારી પોતાની teamએ manage કરી છે",
         },
       },
       {
         id: "freelancer",
         label: {
           en: "Yes, worked with a freelancer",
-          hi: "हाँ — freelancer के साथ काम किया",
-          gu: "હા — freelancer સાથે કામ કર્યું છે",
+          hi: "हाँ, freelancer के साथ काम किया",
+          gu: "હા, freelancer સાથે કામ કર્યું છે",
         },
       },
       {
         id: "agency",
         label: {
           en: "Yes, worked with an agency",
-          hi: "हाँ — agency के साथ काम किया",
-          gu: "હા — agency સાથે કામ કર્યું છે",
+          hi: "हाँ, agency के साथ काम किया",
+          gu: "હા, agency સાથે કામ કર્યું છે",
         },
       },
       {
         id: "scaling",
         label: {
           en: "Currently running campaigns and want to scale",
-          hi: "Campaigns अभी चल रहे हैं — अब उन्हें scale करना है",
-          gu: "Campaigns હાલમાં ચાલી રહી છે — હવે scale કરવી છે",
+          hi: "Campaigns अभी चल रहे हैं, अब उन्हें scale करना है",
+          gu: "Campaigns હાલમાં ચાલી રહી છે, હવે scale કરવી છે",
         },
       },
     ],
@@ -362,9 +362,9 @@ export const defaultQuestions: PublicQuestion[] = [
           gu: "Calls અને enquiries",
         },
         description: {
-          en: "Lead Generation — for service, local and B2B businesses",
-          hi: "Lead Generation — service, local और B2B businesses के लिए",
-          gu: "Lead Generation — service, local અને B2B businesses માટે",
+          en: "Lead Generation: for service, local and B2B businesses",
+          hi: "Lead Generation: service, local और B2B businesses के लिए",
+          gu: "Lead Generation: service, local અને B2B businesses માટે",
         },
       },
       {
@@ -375,9 +375,9 @@ export const defaultQuestions: PublicQuestion[] = [
           gu: "Online product sales",
         },
         description: {
-          en: "D2C — for brands selling through a website or online store",
-          hi: "D2C — Website या online store से products बेचने वाले brands के लिए",
-          gu: "D2C — Website અથવા online store દ્વારા products વેચતી brands માટે",
+          en: "D2C: for brands selling through a website or online store",
+          hi: "D2C: Website या online store से products बेचने वाले brands के लिए",
+          gu: "D2C: Website અથવા online store દ્વારા products વેચતી brands માટે",
         },
       },
     ],
@@ -528,40 +528,40 @@ export const defaultQuestions: PublicQuestion[] = [
         id: "first_time",
         label: {
           en: "No, this is my first time",
-          hi: "नहीं — यह मेरी पहली बार है",
-          gu: "ના — આ મારી પહેલી વાર છે",
+          hi: "नहीं, यह मेरी पहली बार है",
+          gu: "ના, આ મારી પહેલી વાર છે",
         },
       },
       {
         id: "internal",
         label: {
           en: "Yes, done by our own team",
-          hi: "हाँ — हमारी अपनी team ने किया",
-          gu: "હા — અમારી પોતાની teamએ કર્યું છે",
+          hi: "हाँ, हमारी अपनी team ने किया",
+          gu: "હા, અમારી પોતાની teamએ કર્યું છે",
         },
       },
       {
         id: "freelancer",
         label: {
           en: "Yes, worked with a freelancer",
-          hi: "हाँ — freelancer के साथ काम किया",
-          gu: "હા — freelancer સાથે કામ કર્યું છે",
+          hi: "हाँ, freelancer के साथ काम किया",
+          gu: "હા, freelancer સાથે કામ કર્યું છે",
         },
       },
       {
         id: "agency",
         label: {
           en: "Yes, worked with an agency",
-          hi: "हाँ — agency के साथ काम किया",
-          gu: "હા — agency સાથે કામ કર્યું છે",
+          hi: "हाँ, agency के साथ काम किया",
+          gu: "હા, agency સાથે કામ કર્યું છે",
         },
       },
       {
         id: "ranking_now",
         label: {
           en: "We already rank for some keywords and want to grow",
-          hi: "कुछ keywords पर पहले से रैंक हैं — अब और आगे बढ़ना है",
-          gu: "કેટલાક keywords પર પહેલેથી રેન્ક છે — હવે વધુ આગળ વધવું છે",
+          hi: "कुछ keywords पर पहले से रैंक हैं, अब और आगे बढ़ना है",
+          gu: "કેટલાક keywords પર પહેલેથી રેન્ક છે, હવે વધુ આગળ વધવું છે",
         },
       },
     ],

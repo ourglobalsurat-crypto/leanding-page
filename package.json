@@ -12,6 +12,7 @@
     "db:publish-language-update": "tsx scripts/publish-language-update.ts",
     "db:publish-branching-form": "tsx scripts/publish-branching-questionnaire.ts",
     "db:publish-seo-path": "tsx scripts/publish-seo-path.ts",
+    "db:strip-em-dashes": "tsx scripts/strip-em-dashes.ts",
     "db:migrate-encrypt-leads": "tsx scripts/migrate-encrypt-leads.ts",
     "test:lead-crypto": "tsx scripts/test-lead-crypto.ts",
     "qa:e2e": "node scripts/qa.mjs",

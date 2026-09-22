@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { assertValidAdminSlug } from "@/lib/admin-routes";
 
 // Any segment not in the allowlist renders the site's ordinary 404 here, once,
-// for the whole admin subtree — login page and dashboard alike.
+// for the whole admin subtree - login page and dashboard alike.
 export const metadata: Metadata = {
   robots: { index: false, follow: false, noarchive: true },
 };

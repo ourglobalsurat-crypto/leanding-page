@@ -7,7 +7,7 @@ import { normalizeIndianPhone } from "@/lib/validation";
 // scripts/migrate-encrypt-leads.ts via tsx, outside Next's bundler, where
 // that marker throws unconditionally rather than only in a client bundle.
 // It's safe to omit: the passphrase env vars it reads are not NEXT_PUBLIC_*,
-// so Next never inlines their values into client JavaScript — an accidental
+// so Next never inlines their values into client JavaScript - an accidental
 // client import would fail closed (readPassphrase throws "must be set") at
 // runtime rather than leak a secret, just without the earlier build-time
 // error the marker would otherwise give.
@@ -18,9 +18,9 @@ import { normalizeIndianPhone } from "@/lib/validation";
  * Two separate keys, each derived from its own passphrase, doing two
  * different jobs:
  *
- * - LEAD_ENCRYPTION_PASSPHRASE encrypts the field (AES-256-GCM) — this is
+ * - LEAD_ENCRYPTION_PASSPHRASE encrypts the field (AES-256-GCM) - this is
  *   what makes a stolen database backup unreadable.
- * - LEAD_INDEX_PASSPHRASE computes a one-way "blind index" (HMAC-SHA256) —
+ * - LEAD_INDEX_PASSPHRASE computes a one-way "blind index" (HMAC-SHA256) -
  *   a keyed hash stored alongside the ciphertext purely so the admin search
  *   box can still find an exact phone number or email address without ever
  *   decrypting anything to do it.
@@ -33,15 +33,15 @@ import { normalizeIndianPhone } from "@/lib/validation";
  * do both.
  *
  * This is NOT the "crack the first lock, see decoy data" scheme that was
- * originally asked for. That describes deniable encryption — one ciphertext
+ * originally asked for. That describes deniable encryption - one ciphertext
  * that decrypts to two different plausible plaintexts depending which key you
- * hold — which is a specialised, fragile construction, not something to
+ * hold - which is a specialised, fragile construction, not something to
  * build from scratch for a lead-generation form. What's here is standard,
  * well-understood encryption with two keys doing two honestly different jobs.
  *
  * name and city are deliberately left unencrypted: the admin search box does
  * partial substring matching on them ("Raj" finds "Rajesh"), which a blind
- * index cannot do — it only supports exact matches. Encrypting phone/email
+ * index cannot do - it only supports exact matches. Encrypting phone/email
  * only preserves today's search for name and city, and narrows phone/email
  * search from "contains" to "exact match", which is disclosed in the README.
  */
@@ -95,7 +95,7 @@ export function _resetKeyCacheForTests(): void {
 
 /**
  * Encrypts one field's value. `aad` should identify exactly what this
- * ciphertext is (lead id + column name) — it is authenticated but not
+ * ciphertext is (lead id + column name) - it is authenticated but not
  * encrypted, and decryption fails if it does not match exactly, so a
  * ciphertext copied into a different row or column will not decrypt there.
  */

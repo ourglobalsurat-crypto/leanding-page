@@ -67,13 +67,31 @@ check("the two original options are exactly as they were", () => {
   assert.equal(leadGeneration.label.en, "Get more enquiries");
   assert.equal(
     leadGeneration.description?.en,
-    "Lead Generation — for service, local and B2B businesses",
+    "Lead Generation: for service, local and B2B businesses",
   );
   assert.equal(d2c.label.en, "Grow online product sales");
   assert.equal(
     d2c.description?.en,
-    "D2C Growth — for brands selling through a website or online store",
+    "D2C Growth: for brands selling through a website or online store",
   );
+});
+
+check("no visitor-facing text contains an em dash", () => {
+  const emDash = "—";
+  for (const question of defaultQuestions) {
+    const strings = [
+      ...Object.values(question.label),
+      ...Object.values(question.helpText),
+      ...Object.values(question.placeholder),
+      ...question.options.flatMap((option) => [
+        ...Object.values(option.label),
+        ...Object.values(option.description ?? {}),
+      ]),
+    ];
+    for (const value of strings) {
+      assert.ok(!value.includes(emDash), `${question.key} still contains an em dash: ${value}`);
+    }
+  }
 });
 
 check("the paid paths stay untouched by the SEO work", () => {

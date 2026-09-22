@@ -7,7 +7,7 @@ import { readCrmConfig } from "../src/lib/crm-forward";
 // stops there: nothing is ever posted, so this never creates a CRM record.
 //
 // This checks the environment it runs in. Run it locally and it reads
-// .env.local; to check production, read the deployed logs instead — a lead
+// .env.local; to check production, read the deployed logs instead - a lead
 // submitted with no CRM_LEAD_FORM_URL logs "CRM forwarding is OFF".
 
 config({ path: ".env.local", quiet: true });

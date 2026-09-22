@@ -5,13 +5,13 @@ import { notFound } from "next/navigation";
 /**
  * The admin panel is not mounted at a fixed, guessable path. It answers at
  * whichever URL segments are listed here, and returns the site's ordinary 404
- * for every other segment — including the old `/admin`. This is obscurity,
+ * for every other segment - including the old `/admin`. This is obscurity,
  * not authentication: the password login behind it is still the actual
  * security boundary. Treat it as one more speed bump against automated
  * scanners hammering a well-known `/admin`, not as access control.
  *
  * Rotatable without a code change via ADMIN_URL_SLUGS (comma-separated).
- * Never put these values in `robots.txt` or in any link on the public site —
+ * Never put these values in `robots.txt` or in any link on the public site -
  * both are readable by anyone and would publish the "secret" path.
  */
 const DEFAULT_ADMIN_SLUGS = ["gsm-admin", "fenil-admin"];

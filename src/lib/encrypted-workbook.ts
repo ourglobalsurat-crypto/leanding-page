@@ -5,7 +5,7 @@ import XlsxPopulate from "xlsx-populate";
  *
  * Two reasons this is a real Excel file rather than the CSV it replaces:
  *
- * 1. A .csv opens in whatever the machine has associated with it — often a
+ * 1. A .csv opens in whatever the machine has associated with it - often a
  *    text editor. A .xlsx opens in Excel, which is where this belongs.
  * 2. Office Open XML has a documented encryption format, so the file itself
  *    is AES-encrypted and Excel prompts for the password when it is opened.

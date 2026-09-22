@@ -23,7 +23,7 @@ function saveFile(blob: Blob) {
  * produces is locked, so Excel asks for the password when it is opened, and
  * what opens is a sheet of invented leads.
  *
- * "Add content" opens a note field. To anyone using it that is all it is —
+ * "Add content" opens a note field. To anyone using it that is all it is -
  * whatever is typed lands in the exported file. What it also does is decide
  * what that file holds, and which password opens it. See
  * src/lib/export-unlock.ts; the decision is made server-side.

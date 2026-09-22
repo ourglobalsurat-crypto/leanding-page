@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
 /**
  * The plain "Export CSV" button, and anyone who requests this URL directly.
- * Both get decoy rows locked with the decoy passphrase, and no error — a 405
+ * Both get decoy rows locked with the decoy passphrase, and no error - a 405
  * here would be a signpost saying the real data sits behind something else.
  */
 export async function GET() {

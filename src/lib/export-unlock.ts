@@ -49,7 +49,7 @@ export function resolveExportMode(entered: string): ExportMode {
 /**
  * Whether the text the visitor typed should be written into the exported file
  * as the "content" the field promises. A recognised passphrase is swallowed
- * instead — writing it into a downloadable file would put it somewhere it does
+ * instead - writing it into a downloadable file would put it somewhere it does
  * not belong.
  */
 export function shouldEchoContent(entered: string): boolean {
@@ -64,12 +64,12 @@ export function shouldEchoContent(entered: string): boolean {
  * The password the exported workbook is locked with.
  *
  * Always whatever the person typed, so the file they get always opens with the
- * words they just used — a wrong entry still produces a working file, full of
+ * words they just used - a wrong entry still produces a working file, full of
  * invented rows. Locking a wrong entry's file with something else would make
  * it refuse to open, and "this file won't open" is itself the error message
  * this whole design is built to avoid.
  *
- * An empty entry — the plain Export button, or a direct request to the URL —
+ * An empty entry - the plain Export button, or a direct request to the URL -
  * falls back to the decoy passphrase, so that file opens with the first key.
  */
 export function filePasswordFor(entered: string): string {

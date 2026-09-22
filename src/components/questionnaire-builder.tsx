@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { Fragment, FormEvent, useEffect, useState } from "react";
 
 import { languageNames } from "@/lib/copy";
 import {
@@ -58,6 +58,62 @@ function questionFlowLabel(question: PublicQuestion) {
   const flow = flowLabels[question.config.flow ?? "all"];
   const track = question.config.track;
   return track ? `${flow} · ${growthTrackLabels[track]}` : flow;
+}
+
+type Segment = { key: string; title: string; description: string };
+
+/**
+ * Which part of the form a question belongs to. The list is long enough now,
+ * with three paths and two SEO tracks, that a flat run of questions hides who
+ * actually sees what.
+ */
+function segmentOf(question: PublicQuestion): Segment {
+  const { flow, track } = question.config;
+
+  if (!flow) {
+    return {
+      key: "shared",
+      title: "Shared",
+      description: "Asked on every path.",
+    };
+  }
+
+  if (!track) {
+    return {
+      key: flow,
+      title: growthPathLabels[flow],
+      description: `Asked only when the visitor chooses ${growthPathLabels[flow]}.`,
+    };
+  }
+
+  return {
+    key: `${flow}:${track}`,
+    title: `${growthPathLabels[flow]} · ${growthTrackLabels[track]}`,
+    description: `Asked only on the ${growthTrackLabels[track]} track of ${growthPathLabels[flow]}.`,
+  };
+}
+
+/** One entry per segment, in the order the segments first appear. */
+function segmentTotals(questions: readonly PublicQuestion[]) {
+  const totals = new Map<string, { title: string; count: number; hidden: number }>();
+  for (const question of questions) {
+    const segment = segmentOf(question);
+    const entry = totals.get(segment.key) ?? { title: segment.title, count: 0, hidden: 0 };
+    entry.count += 1;
+    if (!question.isActive) entry.hidden += 1;
+    totals.set(segment.key, entry);
+  }
+  return [...totals.entries()].map(([key, value]) => ({ key, ...value }));
+}
+
+/** How many questions in a row from `index` stay inside the same segment. */
+function segmentRunLength(questions: readonly PublicQuestion[], index: number) {
+  const key = segmentOf(questions[index]).key;
+  let length = 0;
+  while (index + length < questions.length && segmentOf(questions[index + length]).key === key) {
+    length += 1;
+  }
+  return length;
 }
 
 /** Only a path that branches again can have its questions limited to a track. */
@@ -301,10 +357,39 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
       {notice && <div className="admin-notice success"><Check size={17} /> {notice}</div>}
       {error && !editing && <div className="admin-notice error">{error}</div>}
 
+      <div className="builder-segment-summary">
+        <span className="builder-segment-summary-label">Sections</span>
+        {segmentTotals(questions).map((segment) => (
+          <span className="builder-segment-chip" key={segment.key}>
+            {segment.title}
+            <strong>{segment.count}</strong>
+            {segment.hidden > 0 && <em>{segment.hidden} hidden</em>}
+          </span>
+        ))}
+      </div>
+
       <div className="builder-list">
         <div className="builder-list-head"><span>Order</span><span>Question</span><span>Type</span><span>Required</span><span>Actions</span></div>
-        {questions.map((question, index) => (
-          <article className={question.isActive ? "builder-row" : "builder-row inactive"} key={question.id}>
+        {questions.map((question, index) => {
+          const segment = segmentOf(question);
+          const startsSegment = index === 0 || segmentOf(questions[index - 1]).key !== segment.key;
+          const isContinuation =
+            startsSegment &&
+            questions.slice(0, index).some((earlier) => segmentOf(earlier).key === segment.key);
+          const runLength = startsSegment ? segmentRunLength(questions, index) : 0;
+
+          return (
+        <Fragment key={question.id}>
+          {startsSegment && (
+            <div className="builder-segment" data-segment={segment.key}>
+              <div>
+                <h3>{segment.title}{isContinuation ? " (continued)" : ""}</h3>
+                <p>{segment.description}</p>
+              </div>
+              <span>{runLength} question{runLength === 1 ? "" : "s"}</span>
+            </div>
+          )}
+          <article className={question.isActive ? "builder-row" : "builder-row inactive"}>
             <div className="builder-order">
               <GripVertical size={18} />
               <strong>{String(index + 1).padStart(2, "0")}</strong>
@@ -324,7 +409,9 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
               <button type="button" className="danger" aria-label="Delete question" disabled={Boolean(question.config.systemRole)} title={question.config.systemRole ? "Core form questions cannot be deleted" : undefined} onClick={() => deleteQuestion(question)}><Trash2 size={17} /></button>
             </div>
           </article>
-        ))}
+        </Fragment>
+          );
+        })}
         {questions.length === 0 && (
           <div className="builder-empty"><CopyPlus size={32} /><h3>No questions yet</h3><p>Add your first question to start building the lead form.</p><button className="admin-button primary" onClick={() => openEditor()}><Plus size={17} /> Add question</button></div>
         )}

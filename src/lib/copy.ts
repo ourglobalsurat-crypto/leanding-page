@@ -129,9 +129,9 @@ export const siteCopy = {
   },
   successKicker: { en: "DONE / COMPLETE", hi: "पूरा हुआ", gu: "પૂર્ણ થયું" },
   successTitle: {
-    en: "Thank you — we’ve got it!",
-    hi: "धन्यवाद — आपकी details मिल गईं!",
-    gu: "આભાર — તમારી માહિતી મળી ગઈ!",
+    en: "Thank you, we’ve got it!",
+    hi: "धन्यवाद, आपकी details मिल गईं!",
+    gu: "આભાર, તમારી માહિતી મળી ગઈ!",
   },
   successBody: {
     en: "Our Surat team will review your answers and contact you shortly with a simple next step.",
@@ -194,7 +194,7 @@ export const siteCopy = {
     gu: "એવી ટીમ, જેની સાથે તમે સીધી વાત કરી શકો.",
   },
   teamBody: {
-    en: "We’re based in Surat and work with businesses in clear, everyday language—from the first call to the final launch.",
+    en: "We’re based in Surat and work with businesses in clear, everyday language, from the first call to the final launch.",
     hi: "हम सूरत की team हैं। पहली call से final launch तक आपके साथ आसान भाषा में काम करते हैं।",
     gu: "અમે સુરતમાં છીએ અને પહેલી callથી કામ પૂરું થાય ત્યાં સુધી તમારી સાથે સરળ ભાષામાં વાત કરીએ છીએ.",
   },
@@ -323,9 +323,9 @@ export const processSteps = [
     number: "02",
     title: { en: "We review", hi: "हम समझेंगे", gu: "અમે સમજશું" },
     body: {
-      en: "A real strategist looks at your needs—not a bot.",
+      en: "A real strategist looks at your needs, not a bot.",
       hi: "हमारी team आपकी ज़रूरत समझेगी, कोई bot नहीं।",
-      gu: "અમારી ટીમ જાતે તમારા જવાબો જોશે — કોઈ bot નહીં.",
+      gu: "અમારી ટીમ જાતે તમારા જવાબો જોશે, કોઈ bot નહીં.",
     },
   },
   {
@@ -333,8 +333,8 @@ export const processSteps = [
     title: { en: "Clear next step", hi: "साफ़ अगला कदम", gu: "આગળનું સ્પષ્ટ પગલું" },
     body: {
       en: "We call with a practical suggestion and no pressure.",
-      hi: "हम उपयोगी सुझाव के साथ call करेंगे — कोई दबाव नहीं।",
-      gu: "અમે ઉપયોગી સલાહ સાથે call કરીશું — કોઈ દબાણ નહીં.",
+      hi: "हम उपयोगी सुझाव के साथ call करेंगे, कोई दबाव नहीं।",
+      gu: "અમે ઉપયોગી સલાહ સાથે call કરીશું, કોઈ દબાણ નહીં.",
     },
   },
 ] as const;

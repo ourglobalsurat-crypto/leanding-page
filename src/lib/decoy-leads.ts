@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 /**
  * Synthetic lead rows for the CSV export's decoy mode.
  *
- * These rows are invented from nothing — no value here is derived from a real
+ * These rows are invented from nothing - no value here is derived from a real
  * lead, not even a timestamp. The only thing borrowed from the database is the
  * row COUNT, so the file is the size someone would expect. That keeps the
  * guarantee simple to state and simple to check: a decoy export leaks nothing

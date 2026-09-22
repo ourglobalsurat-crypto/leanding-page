@@ -33,7 +33,7 @@ export const runtime = "nodejs";
 
 // An unset CRM_LEAD_FORM_URL stores leads here and forwards nothing, which
 // looks exactly like a working integration until someone opens the CRM and
-// finds it empty. Say so in the logs — once per process, not once per lead.
+// finds it empty. Say so in the logs - once per process, not once per lead.
 let warnedCrmDisabled = false;
 function warnCrmDisabledOnce() {
   if (warnedCrmDisabled) return;
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
     const city = typeof cityAnswer?.value === "string" ? cityAnswer.value : null;
     const leadId = crypto.randomUUID();
 
-    // Phone and email are never written in plain text — see src/lib/lead-crypto.ts.
+    // Phone and email are never written in plain text - see src/lib/lead-crypto.ts.
     // The blind index is a keyed hash of the normalized value, computed here
     // (not in SQL) so the admin search box can look up an exact match without
     // the database ever holding the plaintext or an unkeyed, guessable hash.
@@ -312,8 +312,8 @@ export async function POST(request: Request) {
           console.warn(`Lead ${leadId} was not sent to the CRM: ${result.reason}`);
         }
       } catch (error) {
-        // The lead desk still has the full record. Log the id — never the
-        // contact details — so it can be re-entered in the CRM by hand.
+        // The lead desk still has the full record. Log the id - never the
+        // contact details - so it can be re-entered in the CRM by hand.
         console.error(`CRM forwarding failed for lead ${leadId}.`, error);
       }
     });

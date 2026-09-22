@@ -1,6 +1,6 @@
 # Global Surat lead landing page
 
-A mobile-first Meta ads landing page and lead desk for Global Surat. The public experience starts in English, with Hindi and Gujarati options—using familiar terms such as Google, WhatsApp, Ads, and Shopify in English—and guides visitors through one large, simple question at a time. Visitors first choose Lead Generation, D2C Growth, or SEO, then see only the questions relevant to that path. Every question is managed from the protected admin panel and stored in Neon Postgres.
+A mobile-first Meta ads landing page and lead desk for Global Surat. The public experience starts in English, with Hindi and Gujarati options-using familiar terms such as Google, WhatsApp, Ads, and Shopify in English-and guides visitors through one large, simple question at a time. Visitors first choose Lead Generation, D2C Growth, or SEO, then see only the questions relevant to that path. Every question is managed from the protected admin panel and stored in Neon Postgres.
 
 ## What is included
 
@@ -68,7 +68,7 @@ Requires Node.js 20.9 or newer.
    npm run dev
    ```
 
-5. Open `http://localhost:3000` for the landing page, or `http://localhost:3000/gsm-admin` for the lead desk (see [Admin panel URLs](#admin-panel-urls) — `/admin` deliberately 404s).
+5. Open `http://localhost:3000` for the landing page, or `http://localhost:3000/gsm-admin` for the lead desk (see [Admin panel URLs](#admin-panel-urls) - `/admin` deliberately 404s).
 
 The setup script is idempotent. Running it again updates the configured admin password without deleting leads or published form data.
 
@@ -83,7 +83,7 @@ The setup script is idempotent. Running it again updates the configured admin pa
 | `SESSION_SECRET` | Random secret of at least 32 characters used to sign admin sessions and short-lived lead receipts |
 | `ADMIN_URL_SLUGS` | Optional. Comma-separated URL segments the admin panel answers on. Defaults to `gsm-admin,fenil-admin`. See [Admin panel URLs](#admin-panel-urls) |
 | `LEAD_ENCRYPTION_PASSPHRASE` | Encrypts every lead's stored phone number and email address. Losing this permanently loses the ability to read them. See [Lead data encryption](#lead-data-encryption) |
-| `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email — cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
+| `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email - cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
 | `LEAD_EXPORT_REAL_PASSPHRASE` | Opens a lead export containing the real leads, and typed into "Add content" to produce one. See [Lead export and the decoy file](#lead-export-and-the-decoy-file) |
 | `LEAD_EXPORT_DECOY_PASSPHRASE` | Opens the export that the plain **Export CSV** button produces, which contains invented leads |
 | `CRM_LEAD_FORM_URL` | Optional. The Leadgen CRM connection link, including its `?form=` token. Set it to mirror every stored lead into the CRM; unset disables forwarding. See [External CRM forwarding](#external-crm-forwarding) |
@@ -95,9 +95,9 @@ Never commit `.env.local`. The repository intentionally tracks only `.env.exampl
 
 ## Admin panel URLs
 
-The admin panel is not mounted at `/admin`. It answers at `/gsm-admin` and `/fenil-admin` (both render the identical panel), and every other path — including `/admin` itself — gets the site's ordinary 404, indistinguishable from a mistyped URL. This is implemented as a dynamic route segment (`src/app/[adminSlug]/`) that calls Next's `notFound()` for any segment not in the allowlist; see `src/lib/admin-routes.ts`.
+The admin panel is not mounted at `/admin`. It answers at `/gsm-admin` and `/fenil-admin` (both render the identical panel), and every other path - including `/admin` itself - gets the site's ordinary 404, indistinguishable from a mistyped URL. This is implemented as a dynamic route segment (`src/app/[adminSlug]/`) that calls Next's `notFound()` for any segment not in the allowlist; see `src/lib/admin-routes.ts`.
 
-**This is obscurity, not authentication.** The password login behind these URLs is still the real security boundary — a hard-to-guess path only cuts down automated bots that scan for a well-known `/admin`. Anyone who learns either URL still needs valid credentials to see anything. Do not treat this as a substitute for a strong password, and do not rely on it alone.
+**This is obscurity, not authentication.** The password login behind these URLs is still the real security boundary - a hard-to-guess path only cuts down automated bots that scan for a well-known `/admin`. Anyone who learns either URL still needs valid credentials to see anything. Do not treat this as a substitute for a strong password, and do not rely on it alone.
 
 Change the two segments with `ADMIN_URL_SLUGS` (comma-separated), for example if either leaks:
 
@@ -105,41 +105,41 @@ Change the two segments with `ADMIN_URL_SLUGS` (comma-separated), for example if
 ADMIN_URL_SLUGS=gsm-admin,fenil-admin
 ```
 
-**Never put an admin URL in `robots.txt` and never link to it from the public site.** `robots.txt` is a public, unauthenticated file anyone can read at `/robots.txt` — a `Disallow` entry there publishes the exact path it names, to every visitor and every scraper, which defeats the purpose entirely. `src/app/robots.ts` deliberately excludes the admin paths for this reason. Likewise, no page in this repository links to the admin panel; share the URL with your team directly (bookmark it, don't paste it into a public doc), the same way you'd share a password.
+**Never put an admin URL in `robots.txt` and never link to it from the public site.** `robots.txt` is a public, unauthenticated file anyone can read at `/robots.txt` - a `Disallow` entry there publishes the exact path it names, to every visitor and every scraper, which defeats the purpose entirely. `src/app/robots.ts` deliberately excludes the admin paths for this reason. Likewise, no page in this repository links to the admin panel; share the URL with your team directly (bookmark it, don't paste it into a public doc), the same way you'd share a password.
 
 ## Lead data encryption
 
-A lead's phone number and email address are stored only as AES-256-GCM ciphertext (`phone_enc`/`email_enc` on the `leads` table) — a stolen database backup contains no readable contact details. Name and city are stored as plain text on purpose: see "What isn't encrypted, and why" below. This is implemented in `src/lib/lead-crypto.ts`.
+A lead's phone number and email address are stored only as AES-256-GCM ciphertext (`phone_enc`/`email_enc` on the `leads` table) - a stolen database backup contains no readable contact details. Name and city are stored as plain text on purpose: see "What isn't encrypted, and why" below. This is implemented in `src/lib/lead-crypto.ts`.
 
 ### Two passphrases, two different jobs
 
 - `LEAD_ENCRYPTION_PASSPHRASE` encrypts and decrypts the field. This is what protects the data.
-- `LEAD_INDEX_PASSPHRASE` computes a separate "blind index" — a keyed hash (HMAC-SHA256) of the normalized phone/email, stored alongside the ciphertext purely so the admin search box can find an exact match without decrypting anything to do it.
+- `LEAD_INDEX_PASSPHRASE` computes a separate "blind index" - a keyed hash (HMAC-SHA256) of the normalized phone/email, stored alongside the ciphertext purely so the admin search box can find an exact match without decrypting anything to do it.
 
 They're kept apart deliberately: leaking the index passphrase lets someone test guesses against the index (confirm whether a specific number is in your leads) but decrypts nothing. Leaking the encryption passphrase decrypts data but can't be used to search or enumerate what's stored. A single shared key would let a leak of either do both.
 
-Both passphrases are stretched into real 256-bit keys via `scrypt` before use, so a memorable passphrase is still safe as the input. **If you ever lose both passphrases, every encrypted phone number and email address becomes permanently unreadable — there is no recovery path.** Back them up somewhere durable (a password manager), not only in `.env.local`.
+Both passphrases are stretched into real 256-bit keys via `scrypt` before use, so a memorable passphrase is still safe as the input. **If you ever lose both passphrases, every encrypted phone number and email address becomes permanently unreadable - there is no recovery path.** Back them up somewhere durable (a password manager), not only in `.env.local`.
 
 ### What isn't encrypted, and why
 
-The admin search box does partial, "contains" matching ("Raj" finds "Rajesh") — that's how `name` and `city` search has always worked, and it stays exactly as it is because both remain plain text. A blind index only supports **exact** matches, so encrypting name/city would silently break that kind of search; encrypting phone/email instead narrows their search from "contains" to "exact, normalized match" — typing a complete phone number or email address finds the lead, typing the last 4 digits or a domain like `@gmail.com` does not. This trade-off is why phone/email were chosen for encryption and name/city were not: phone and email are what let someone actually contact or impersonate a real person, which is the sharper risk.
+The admin search box does partial, "contains" matching ("Raj" finds "Rajesh") - that's how `name` and `city` search has always worked, and it stays exactly as it is because both remain plain text. A blind index only supports **exact** matches, so encrypting name/city would silently break that kind of search; encrypting phone/email instead narrows their search from "contains" to "exact, normalized match" - typing a complete phone number or email address finds the lead, typing the last 4 digits or a domain like `@gmail.com` does not. This trade-off is why phone/email were chosen for encryption and name/city were not: phone and email are what let someone actually contact or impersonate a real person, which is the sharper risk.
 
 ### Migrating an existing database
 
-A fresh `npm run db:setup` already creates the encrypted columns — nothing further to do. A database created before this feature existed needs a one-time migration:
+A fresh `npm run db:setup` already creates the encrypted columns - nothing further to do. A database created before this feature existed needs a one-time migration:
 
 ```bash
-npm run db:migrate-encrypt-leads                  # dry run — reports what would change, writes nothing
+npm run db:migrate-encrypt-leads                  # dry run - reports what would change, writes nothing
 npm run db:migrate-encrypt-leads -- --apply        # adds the columns and encrypts existing rows
 ```
 
-It's safe to re-run: every step is `IF NOT EXISTS`/idempotent, and it only touches rows that don't have encrypted data yet. It deliberately does **not** drop the old plaintext `phone`/`email` columns — check that the admin panel shows the right phone number and email for a few real leads first, then drop them yourself:
+It's safe to re-run: every step is `IF NOT EXISTS`/idempotent, and it only touches rows that don't have encrypted data yet. It deliberately does **not** drop the old plaintext `phone`/`email` columns - check that the admin panel shows the right phone number and email for a few real leads first, then drop them yourself:
 
 ```sql
 ALTER TABLE leads DROP COLUMN phone, DROP COLUMN email;
 ```
 
-Run `npm run test:lead-crypto` after changing anything in `src/lib/lead-crypto.ts` — it covers round-tripping, tamper detection, wrong-key/wrong-row decryption failures, and blind-index normalization.
+Run `npm run test:lead-crypto` after changing anything in `src/lib/lead-crypto.ts` - it covers round-tripping, tamper detection, wrong-key/wrong-row decryption failures, and blind-index normalization.
 
 ## Lead export and the decoy file
 
@@ -153,28 +153,28 @@ There are two controls on the leads page, and neither mentions a key:
 | **Add content** → `LEAD_EXPORT_REAL_PASSPHRASE` | The file opens with that passphrase and contains the real, decrypted leads. |
 | **Add content** → anything else | The file opens with whatever was typed, contains invented leads, and the typed text is written into the sheet as content. |
 
-There is deliberately **no error, ever** — no "wrong passphrase", no different status code, no different wait. A wrong entry produces a working file full of invented rows, indistinguishable from the decoy passphrase's. The two passphrases are compared in constant time and neither is ever written into the file.
+There is deliberately **no error, ever** - no "wrong passphrase", no different status code, no different wait. A wrong entry produces a working file full of invented rows, indistinguishable from the decoy passphrase's. The two passphrases are compared in constant time and neither is ever written into the file.
 
 The file is always locked with whatever was typed, so **every entry produces a file that opens**. Locking a wrong entry's file with something else would make it refuse to open, and "this file won't open" is itself the error message this design exists to avoid.
 
-The decision is made server-side (`src/lib/export-unlock.ts`). Requesting `/api/admin/leads/export` directly, skipping the buttons, returns the decoy file rather than an error — a `405` there would be a signpost saying the real data sits behind something else.
+The decision is made server-side (`src/lib/export-unlock.ts`). Requesting `/api/admin/leads/export` directly, skipping the buttons, returns the decoy file rather than an error - a `405` there would be a signpost saying the real data sits behind something else.
 
 ### What the decoy file contains
 
-Invented rows, generated in `src/lib/decoy-leads.ts`. **The only thing taken from the database is the number of leads**, so the file is a believable size; not one name, number, address, date or answer in it comes from a real record. Generation is deterministic, so exporting twice produces identical files — fresh random names on each download would itself be the tell.
+Invented rows, generated in `src/lib/decoy-leads.ts`. **The only thing taken from the database is the number of leads**, so the file is a believable size; not one name, number, address, date or answer in it comes from a real record. Generation is deterministic, so exporting twice produces identical files - fresh random names on each download would itself be the tell.
 
 The invented phone numbers are structurally valid Indian mobile numbers, which is what makes them believable and also means one could in principle belong to a real stranger. Nothing ever dials them, but they can be switched to an unassignable prefix if you would rather.
 
 ### Opening the file
 
-**Excel, LibreOffice Calc and Apple Numbers** can open password-protected `.xlsx`. **Google Sheets cannot** — it has no way to prompt for the password, so uploading one of these files there will fail. Open it in Excel.
+**Excel, LibreOffice Calc and Apple Numbers** can open password-protected `.xlsx`. **Google Sheets cannot** - it has no way to prompt for the password, so uploading one of these files there will fail. Open it in Excel.
 
 ### What is not possible, and why
 
 A button *inside the spreadsheet* that reveals the real data on a second passphrase is not something this can do safely:
 
 - Doing it in-file needs a VBA macro, and Excel has blocked macros in files downloaded from the internet by default since 2022. Anyone receiving one would have to deliberately unblock it, and antivirus treats macro-enabled downloads as suspicious.
-- More importantly, the real data would then have to be *inside* the file to be revealed — and anything inside the file can be extracted from it by unzipping, whatever the button does. A second lock drawn on top of data that is already in the file protects nothing.
+- More importantly, the real data would then have to be *inside* the file to be revealed - and anything inside the file can be extracted from it by unzipping, whatever the button does. A second lock drawn on top of data that is already in the file protects nothing.
 
 So the second passphrase is entered in the admin panel, where the server can decide what to put in the file before it is ever built. The real data is simply never in the decoy file to begin with.
 
@@ -182,13 +182,20 @@ For the same reason, the export is not a downloadable script that prompts for a 
 
 ### What this does not cover
 
-**The leads pages still show real phone numbers and email addresses on screen to anyone who is logged in.** This covers the one-click bulk export — the fastest way to walk off with everything — and nothing else. Someone with working admin credentials can still read the real data off `/leads`, or scrape it. Treat the decoy as a speed bump on bulk exfiltration, not as "the data is hidden now".
+**The leads pages still show real phone numbers and email addresses on screen to anyone who is logged in.** This covers the one-click bulk export - the fastest way to walk off with everything - and nothing else. Someone with working admin credentials can still read the real data off `/leads`, or scrape it. Treat the decoy as a speed bump on bulk exfiltration, not as "the data is hidden now".
 
 Keep `LEAD_EXPORT_REAL_PASSPHRASE` **different from `LEAD_ENCRYPTION_PASSPHRASE`**. The export passphrase gets typed into a web form and into Excel's password box; the key that protects every stored phone number and email should go in neither.
 
 Run `npm run test:export-unlock` after touching any of this. It covers near-misses, empty and unset passphrases, the no-echo rule, that the workbook is genuinely encrypted rather than a plain zip, that a wrong password cannot open it, and that its contents never appear in the clear inside the file.
 
 ## Questionnaire workflow
+
+The builder groups the draft into sections so it is clear at a glance who sees
+each question: **Shared**, one section per path, and one per track inside a path
+that branches. A summary above the list counts the questions in each section.
+The list itself stays in the real form order, so the numbering and the reorder
+arrows mean what they always did; a section that the order splits in two is
+labelled **(continued)** rather than being moved.
 
 Edits are saved to a draft and do not immediately affect live visitors. Select **Publish changes** when the draft is ready. Publishing archives the old version, makes the draft live atomically, and creates a new editable draft. Leads submitted from a recently archived form remain accepted for 24 hours so visitors already filling the form are not lost.
 
@@ -222,21 +229,21 @@ Container `GTM-W44W95MN` loads on every route from the root layout in `src/app/l
 
 Because GTM loads after hydration, the `generate_lead` push above can land in `dataLayer` before the container initializes. That is safe: `dataLayer` is a queue, and GTM processes everything already in it on startup.
 
-The Content Security Policy in `next.config.ts` allowlists only the Google origins GTM and GA4 need (`gtmScriptSrc`, `gtmImgSrc`, `gtmConnectSrc`, `gtmFrameSrc`). **Any other vendor tag added inside the container — Meta Pixel, Google Ads remarketing, a chat widget — will be blocked silently until its domains are added to those constants.** After publishing a new tag, check the browser console for CSP violations.
+The Content Security Policy in `next.config.ts` allowlists only the Google origins GTM and GA4 need (`gtmScriptSrc`, `gtmImgSrc`, `gtmConnectSrc`, `gtmFrameSrc`). **Any other vendor tag added inside the container - Meta Pixel, Google Ads remarketing, a chat widget - will be blocked silently until its domains are added to those constants.** After publishing a new tag, check the browser console for CSP violations.
 
 GTM Preview and Tag Assistant frame the site, so they are blocked by `frame-ancestors 'none'` and `X-Frame-Options: DENY`. Relax those two headers temporarily if you need to debug the container in a deployed environment, and restore them afterwards.
 
 ## External CRM forwarding
 
-Every stored lead is also mirrored into the external Leadgen CRM at `leadgen.globalsurat.com`, so the sales team can work leads there instead of only in the lead desk. Set `CRM_LEAD_FORM_URL` to the connection link the CRM gives you — the one behind its **Send an enquiry** button, including the `?form=` token — and forwarding turns itself on. Leave it unset and nothing is sent anywhere; the lead desk is unaffected either way.
+Every stored lead is also mirrored into the external Leadgen CRM at `leadgen.globalsurat.com`, so the sales team can work leads there instead of only in the lead desk. Set `CRM_LEAD_FORM_URL` to the connection link the CRM gives you - the one behind its **Send an enquiry** button, including the `?form=` token - and forwarding turns itself on. Leave it unset and nothing is sent anywhere; the lead desk is unaffected either way.
 
 **The `?form=` token is a credential.** Anyone holding it can post leads into your CRM account. Keep it in `.env.local` and in your host's environment settings, never in a commit and never in client-side code. Rotate it in the CRM if it leaks.
 
 ### How it works
 
-The CRM ships a browser connector (`assets/lead-form.js`) that draws its own enquiry form. This site deliberately does not use it. That script binds a capturing `submit` listener and calls `stopImmediatePropagation()`, which would break this app's own React submit handler, and it reads answers off mounted `<input name="...">` elements — but the public form asks one question at a time, so most inputs are unmounted by the last step. The CSP in `next.config.ts` would also block its request, because `connect-src` allows only `'self'` and the Google Tag Manager origins.
+The CRM ships a browser connector (`assets/lead-form.js`) that draws its own enquiry form. This site deliberately does not use it. That script binds a capturing `submit` listener and calls `stopImmediatePropagation()`, which would break this app's own React submit handler, and it reads answers off mounted `<input name="...">` elements - but the public form asks one question at a time, so most inputs are unmounted by the last step. The CSP in `next.config.ts` would also block its request, because `connect-src` allows only `'self'` and the Google Tag Manager origins.
 
-Instead `src/lib/crm-forward.ts` posts to the same JSON endpoint from the server, and `src/app/api/leads/route.ts` calls it inside Next's `after()` — **after** the lead is committed to Postgres and the visitor's response has been sent. The JSON endpoint (`website-leads.php`) is derived from the link you paste, exactly as the connector derives it from its own script URL.
+Instead `src/lib/crm-forward.ts` posts to the same JSON endpoint from the server, and `src/app/api/leads/route.ts` calls it inside Next's `after()` - **after** the lead is committed to Postgres and the visitor's response has been sent. The JSON endpoint (`website-leads.php`) is derived from the link you paste, exactly as the connector derives it from its own script URL.
 
 Each send takes a fresh single-use challenge with a `GET`, then posts the lead. The lead's own UUID travels as the CRM's `request_id`, which is what the CRM deduplicates on, so the three retry attempts (1s and 4s apart, 15s timeout each) cannot create duplicate CRM records. Contact details fill the CRM's name, phone and email fields; every other answer goes into its per-question fields and is repeated in the enquiry body, with option ids rendered as their English labels. The lead's UUID is included as a **Lead ID** field so a CRM record can be matched back to the full answer history and notes in the lead desk.
 
@@ -246,13 +253,13 @@ Each send takes a fresh single-use challenge with a `GET`, then posts the lead. 
 npm run crm:check
 ```
 
-This fetches the CRM's form configuration and stops there — it never posts, so it cannot create a CRM record. It reports `OK` with the form's name when the token is valid and the CRM is reachable, `OFF` when `CRM_LEAD_FORM_URL` is unset, and `FAIL` with the reason when the link or token is wrong. It prints only the first characters of the token, never the whole value.
+This fetches the CRM's form configuration and stops there - it never posts, so it cannot create a CRM record. It reports `OK` with the form's name when the token is valid and the CRM is reachable, `OFF` when `CRM_LEAD_FORM_URL` is unset, and `FAIL` with the reason when the link or token is wrong. It prints only the first characters of the token, never the whole value.
 
-**It checks the environment it runs in, which locally means `.env.local`.** Setting the variable there does nothing for your deployed site: hosts keep their own environment, and Vercel bakes variables in at build time, so a variable added after a deployment does not reach it until you redeploy. To check production, submit a lead and read the deployed logs — an unset variable logs `CRM forwarding is OFF` once per server process.
+**It checks the environment it runs in, which locally means `.env.local`.** Setting the variable there does nothing for your deployed site: hosts keep their own environment, and Vercel bakes variables in at build time, so a variable added after a deployment does not reach it until you redeploy. To check production, submit a lead and read the deployed logs - an unset variable logs `CRM forwarding is OFF` once per server process.
 
 ### When it fails
 
-The CRM is a mirror, never the system of record. A CRM that is slow, unreachable or misconfigured cannot fail a submission, delay the thank-you page, or lose a lead — the lead is already in the database before forwarding starts. After three failed attempts the server logs `CRM forwarding failed for lead <uuid>` with the lead's ID and no contact details; look that ID up in the lead desk and enter it in the CRM by hand. A lead with no name or no phone number is skipped without being sent, because the CRM rejects those.
+The CRM is a mirror, never the system of record. A CRM that is slow, unreachable or misconfigured cannot fail a submission, delay the thank-you page, or lose a lead - the lead is already in the database before forwarding starts. After three failed attempts the server logs `CRM forwarding failed for lead <uuid>` with the lead's ID and no contact details; look that ID up in the lead desk and enter it in the CRM by hand. A lead with no name or no phone number is skipped without being sent, because the CRM rejects those.
 
 > Forwarding puts a **second, unencrypted copy** of each lead's name, phone number and email address inside the CRM. That is the point of the integration, but it does mean the protection described in [Lead data encryption](#lead-data-encryption) covers this database only, not the CRM. Whoever can log into the CRM can read every forwarded lead's contact details.
 
@@ -268,7 +275,7 @@ npm run test:crm-forward
 npm run test:seo-path
 ```
 
-`test:crm-forward` stubs the network — it never contacts the real CRM and never creates a CRM record. `test:seo-path` checks the SEO path, both of its tracks, and rehearses `db:publish-seo-path` against an in-memory draft, so neither one touches a database.
+`test:crm-forward` stubs the network - it never contacts the real CRM and never creates a CRM record. `test:seo-path` checks the SEO path, both of its tracks, and rehearses `db:publish-seo-path` against an in-memory draft, so neither one touches a database.
 
 For the browser flow, start the app and run:
 
@@ -285,7 +292,7 @@ npm run qa:e2e
 
 The browser test submits and removes a synthetic lead on each of the three paths, switches SEO tracks mid-form to confirm the abandoned track's answer is dropped, verifies admin login, updates a lead, creates and deletes a draft question, checks 1440/390/320 layouts, and writes ignored screenshots to `artifacts/qa`. The admin URL it drives is `gsm-admin` by default; override with `QA_ADMIN_SLUG` if you changed `ADMIN_URL_SLUGS`.
 
-> As of writing, this script fails on an unrelated pre-existing timing issue (`scripts/qa.mjs:116`, a Playwright/Chrome race on `response.json()` after a client-side redirect) — reproducible on a clean checkout with no changes at all. Not caused by anything in this repository's application code; needs its own fix.
+> As of writing, this script fails on an unrelated pre-existing timing issue (`scripts/qa.mjs:116`, a Playwright/Chrome race on `response.json()` after a client-side redirect) - reproducible on a clean checkout with no changes at all. Not caused by anything in this repository's application code; needs its own fix.
 
 ## Deployment
 
@@ -306,6 +313,24 @@ For an existing production installation, publish the branching questionnaire in 
 
 Do not run `db:publish-branching-form` before the compatible app deployment: older application code does not understand path-specific questions. The publishing command is idempotent. It archives the previous published and draft versions without deleting historical questions or leads, publishes the branching version atomically, and creates a fresh editable draft. Because public pages are dynamically rendered, a second deployment is not required after the publish command.
 
+### Punctuation
+
+The application uses no em dashes. `test:seo-path` fails if one reaches any
+visitor-facing string in `src/lib/default-questionnaire.ts`.
+
+Question text is stored in the database, so cleaning the source file does not
+change what a live visitor reads. For a database that predates this:
+
+```bash
+npm run db:strip-em-dashes            # dry run, lists what it would change
+npx tsx scripts/strip-em-dashes.ts --apply
+```
+
+It rewrites the text of the published and draft questions in place. Keys,
+types, paths, tracks, order and option ids are untouched, archived versions keep
+their original wording, and submitted leads are unaffected because their answers
+carry their own question snapshot.
+
 ### Adding the SEO path to a live questionnaire
 
 `db:publish-branching-form` already publishes all three paths, so a new database needs nothing further. An installation that is already running the earlier two-path form gains the third path with:
@@ -314,7 +339,7 @@ Do not run `db:publish-branching-form` before the compatible app deployment: old
 npm run db:publish-seo-path
 ```
 
-Deploy the application code first, for the same reason as above. This command works from the current editable draft rather than from the defaults, so any wording the admins have already changed is kept, and the two options that were already live are left exactly as they are. It appends the SEO option to the service-path selector, adds the SEO track selector and its five questions ahead of the shared name and WhatsApp-number steps, publishes that draft, and creates a new editable draft. It is idempotent and makes no changes once the SEO path is live. If the draft holds admin edits that are not ready to go live, publish or revert them from the admin panel first — this command publishes the draft as it finds it.
+Deploy the application code first, for the same reason as above. This command works from the current editable draft rather than from the defaults, so any wording the admins have already changed is kept, and the two options that were already live are left exactly as they are. It appends the SEO option to the service-path selector, adds the SEO track selector and its five questions ahead of the shared name and WhatsApp-number steps, publishes that draft, and creates a new editable draft. It is idempotent and makes no changes once the SEO path is live. If the draft holds admin edits that are not ready to go live, publish or revert them from the admin panel first - this command publishes the draft as it finds it.
 
 Afterwards, confirm the first live question offers all three options and submit one test lead through each SEO track.
 

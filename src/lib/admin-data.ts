@@ -28,7 +28,7 @@ const LEAD_COLUMNS = "id, name, phone_enc, email_enc, city, language, status, so
 
 /**
  * Decryption failures here (wrong/missing key, corrupted row) surface as
- * "—" rather than crashing the whole dashboard — one unreadable lead should
+ * "-" rather than crashing the whole dashboard - one unreadable lead should
  * not take down the page for every other lead. Failures are still logged so
  * they don't go unnoticed.
  */
@@ -95,7 +95,7 @@ export async function getLeads({
   if (normalizedSearch) {
     // name and city stay in plain text, so "Raj" still finds "Rajesh" the way
     // it always has. phone and email are encrypted, so there is no column to
-    // ILIKE — instead, if the search term itself normalizes to a complete
+    // ILIKE - instead, if the search term itself normalizes to a complete
     // phone number or a well-formed email address, its blind index is looked
     // up for an exact match. A partial phone/email ("98765", "@gmail.com")
     // will not match; that trade-off is documented in the README.

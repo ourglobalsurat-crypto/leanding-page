@@ -3,20 +3,20 @@
  * adds the encrypted columns, backfills them from the existing plaintext
  * `phone`/`email` columns, and leaves those plaintext columns in place.
  *
- * A brand-new database does not need this — `npm run db:setup` already
+ * A brand-new database does not need this - `npm run db:setup` already
  * creates the encrypted columns from the start (see scripts/setup-db.ts).
  *
  * Safe to run more than once: every step uses IF NOT EXISTS / IF EXISTS, and
  * the backfill only touches rows that don't have encrypted data yet, so
  * re-running after fixing a config problem picks up where it left off.
  *
- * Deliberately does NOT drop the old `phone`/`email` columns — do that
+ * Deliberately does NOT drop the old `phone`/`email` columns - do that
  * yourself, manually, only after confirming the admin panel shows the right
  * phone number and email for a few real leads. See the README for the exact
  * statement and why it's not automated here.
  *
  * Usage:
- *   npx tsx scripts/migrate-encrypt-leads.ts            (dry run — no writes)
+ *   npx tsx scripts/migrate-encrypt-leads.ts            (dry run - no writes)
  *   npx tsx scripts/migrate-encrypt-leads.ts --apply     (writes for real)
  */
 
@@ -78,14 +78,14 @@ async function main() {
   console.log(
     apply
       ? "Running for real (--apply set).\n"
-      : "Dry run — no writes will be made. Re-run with --apply to migrate.\n",
+      : "Dry run - no writes will be made. Re-run with --apply to migrate.\n",
   );
 
   const hasPlainPhone = await columnExists("phone");
   const hasPlainEmail = await columnExists("email");
   if (!hasPlainPhone && !hasPlainEmail) {
     console.log(
-      "No plaintext phone/email columns found — this database is already on the encrypted schema, or was created fresh. Nothing to do.",
+      "No plaintext phone/email columns found - this database is already on the encrypted schema, or was created fresh. Nothing to do.",
     );
     return;
   }
@@ -93,13 +93,13 @@ async function main() {
   if (apply) await ensureColumns();
 
   // In a dry run against a database that has never been migrated, phone_enc /
-  // email_enc don't exist yet — that's not an error, it just means every row
+  // email_enc don't exist yet - that's not an error, it just means every row
   // with a plaintext value still needs migrating.
   const hasEncPhone = await columnExists("phone_enc");
   const hasEncEmail = await columnExists("email_enc");
 
   // "Needs migrating" means there IS a plaintext value and it has NOT been
-  // encrypted yet — not merely "the encrypted column is null", which is also
+  // encrypted yet - not merely "the encrypted column is null", which is also
   // true, correctly, for a lead that never had a phone/email in the first
   // place. Conflating the two would make every field-less row look pending
   // forever.
@@ -153,7 +153,7 @@ async function main() {
     "\nDone. Next: open the admin panel and check that a few real leads show the right phone " +
       "number and email. Once you're confident, drop the old plaintext columns yourself with:\n" +
       "  ALTER TABLE leads DROP COLUMN phone, DROP COLUMN email;\n" +
-      "That statement is not run automatically — see the README.",
+      "That statement is not run automatically - see the README.",
   );
 }
 

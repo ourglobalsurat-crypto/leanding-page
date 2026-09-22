@@ -18,7 +18,7 @@ function displayAnswer(item: LeadAnswer) {
   const options = item.questionSnapshot.options ?? [];
   const resolve = (value: unknown) => {
     const option = options.find((candidate) => candidate.id === value);
-    return option?.label.en || String(value ?? "—");
+    return option?.label.en || String(value ?? "-");
   };
   return Array.isArray(item.answer) ? item.answer.map(resolve).join(", ") : resolve(item.answer);
 }

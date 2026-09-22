@@ -26,8 +26,8 @@ export function AdminShell({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // The admin base path is not fixed — it's whichever allowed segment the
-  // visitor is currently on (see src/lib/admin-routes.ts) — so every link here
+  // The admin base path is not fixed - it's whichever allowed segment the
+  // visitor is currently on (see src/lib/admin-routes.ts) - so every link here
   // is built from the live URL rather than a hardcoded "/admin".
   const base = `/${pathname.split("/")[1] ?? ""}`;
   const navigation = [
