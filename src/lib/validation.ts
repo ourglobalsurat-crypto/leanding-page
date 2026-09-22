@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   growthPaths,
+  growthTracks,
   locales,
   questionTypes,
   systemQuestionRoles,
@@ -45,6 +46,7 @@ export const questionPayloadSchema = z.object({
     maxSelections: z.number().int().min(1).max(50).optional(),
     allowOther: z.boolean().optional(),
     flow: z.enum(growthPaths).optional(),
+    track: z.enum(growthTracks).optional(),
     systemRole: z.enum(systemQuestionRoles).optional(),
   }),
   isActive: z.boolean().default(true),

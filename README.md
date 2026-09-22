@@ -1,12 +1,12 @@
 # Global Surat lead landing page
 
-A mobile-first Meta ads landing page and lead desk for Global Surat. The public experience starts in English, with Hindi and Gujarati options—using familiar terms such as Google, WhatsApp, Ads, and Shopify in English—and guides visitors through one large, simple question at a time. Visitors first choose Lead Generation or D2C Growth, then see only the questions relevant to that path. Every question is managed from the protected admin panel and stored in Neon Postgres.
+A mobile-first Meta ads landing page and lead desk for Global Surat. The public experience starts in English, with Hindi and Gujarati options—using familiar terms such as Google, WhatsApp, Ads, and Shopify in English—and guides visitors through one large, simple question at a time. Visitors first choose Lead Generation, D2C Growth, or SEO, then see only the questions relevant to that path. Every question is managed from the protected admin panel and stored in Neon Postgres.
 
 ## What is included
 
 - Public landing pages at `/` and `/contact`
 - English, हिन्दी, and ગુજરાતી language switching
-- One-question-at-a-time conditional lead form with separate Lead Generation and D2C Growth paths
+- One-question-at-a-time conditional lead form with separate Lead Generation, D2C Growth, and SEO paths
 - Large tap targets, path-aware progress, validation, consent, and a WhatsApp fallback
 - UTM, source, campaign, referrer, language, and questionnaire-version capture
 - Receipt-gated conversion page at `/thank-you` after a lead is successfully stored
@@ -192,7 +192,11 @@ Run `npm run test:export-unlock` after touching any of this. It covers near-miss
 
 Edits are saved to a draft and do not immediately affect live visitors. Select **Publish changes** when the draft is ready. Publishing archives the old version, makes the draft live atomically, and creates a new editable draft. Leads submitted from a recently archived form remain accepted for 24 hours so visitors already filling the form are not lost.
 
-The first question selects either the `lead_generation` or `d2c_growth` path. Questions assigned to one path remain hidden from visitors on the other path; shared questions, including the required name and WhatsApp-number fields, appear in both. The admin questionnaire editor allows non-system questions to be assigned to **Both paths**, **Lead Generation only**, or **D2C Growth only**. Core selector and contact roles are protected so an edit cannot make the published flow impossible to submit.
+The first question selects the `lead_generation`, `d2c_growth`, or `seo` path. Questions assigned to one path remain hidden from visitors on every other path; shared questions, including the required name and WhatsApp-number fields, appear in all of them. The admin questionnaire editor allows non-system questions to be assigned to **All paths** or to a single path, and, inside a path that branches again, to **All tracks** or to a single track. Core selector and contact roles are protected so an edit cannot make the published flow impossible to submit.
+
+The SEO path branches once more, because SEO is planned around the same two business models the other paths cover: a visitor who chooses SEO then says whether they want enquiries or online product sales. That second answer is a **track**, and `config.track` limits a question to one track of its path. The Lead Generation track asks which area to rank in; the D2C track asks about monthly online revenue; the website link, past SEO work, and planned monthly budget are asked on both.
+
+A path that branches carries exactly one **path-track selector**, which must be that path's first visible question and must keep both track options. A question can only be limited to a track inside a path that has such a selector. Paths and tracks need not be the same length: the progress indicator shows the longest run still reachable from the current answers, so it narrows as the visitor chooses and never jumps backwards.
 
 Question keys should stay stable once they are used for important contact fields. The default `full_name`, `phone`, `email`, and `city` keys are also copied into searchable lead columns. Server-side validation independently reconstructs the selected path, rejects hidden or unrecognized answers, and validates every visible required question.
 
@@ -261,9 +265,10 @@ npm run build
 npm run test:lead-crypto
 npm run test:export-unlock
 npm run test:crm-forward
+npm run test:seo-path
 ```
 
-`test:crm-forward` stubs the network — it never contacts the real CRM and never creates a CRM record.
+`test:crm-forward` stubs the network — it never contacts the real CRM and never creates a CRM record. `test:seo-path` checks the SEO path, both of its tracks, and rehearses `db:publish-seo-path` against an in-memory draft, so neither one touches a database.
 
 For the browser flow, start the app and run:
 
@@ -278,7 +283,7 @@ $env:QA_BASE_URL = "http://localhost:3000"
 npm run qa:e2e
 ```
 
-The browser test submits and removes a synthetic lead, verifies admin login, updates a lead, creates and deletes a draft question, checks 1440/390/320 layouts, and writes ignored screenshots to `artifacts/qa`. The admin URL it drives is `gsm-admin` by default; override with `QA_ADMIN_SLUG` if you changed `ADMIN_URL_SLUGS`.
+The browser test submits and removes a synthetic lead on each of the three paths, switches SEO tracks mid-form to confirm the abandoned track's answer is dropped, verifies admin login, updates a lead, creates and deletes a draft question, checks 1440/390/320 layouts, and writes ignored screenshots to `artifacts/qa`. The admin URL it drives is `gsm-admin` by default; override with `QA_ADMIN_SLUG` if you changed `ADMIN_URL_SLUGS`.
 
 > As of writing, this script fails on an unrelated pre-existing timing issue (`scripts/qa.mjs:116`, a Playwright/Chrome race on `response.json()` after a client-side redirect) — reproducible on a clean checkout with no changes at all. Not caused by anything in this repository's application code; needs its own fix.
 
@@ -297,9 +302,21 @@ For an existing production installation, publish the branching questionnaire in 
    npm run db:publish-branching-form
    ```
 
-5. Confirm that the first live question offers Lead Generation and D2C Growth, submit one test lead through each path, verify both appear in the admin lead desk, and verify each successful submission reaches `/thank-you`.
+5. Confirm that the first live question offers Lead Generation, D2C Growth, and SEO, submit one test lead through each path, verify all three appear in the admin lead desk, and verify each successful submission reaches `/thank-you`.
 
 Do not run `db:publish-branching-form` before the compatible app deployment: older application code does not understand path-specific questions. The publishing command is idempotent. It archives the previous published and draft versions without deleting historical questions or leads, publishes the branching version atomically, and creates a fresh editable draft. Because public pages are dynamically rendered, a second deployment is not required after the publish command.
+
+### Adding the SEO path to a live questionnaire
+
+`db:publish-branching-form` already publishes all three paths, so a new database needs nothing further. An installation that is already running the earlier two-path form gains the third path with:
+
+```bash
+npm run db:publish-seo-path
+```
+
+Deploy the application code first, for the same reason as above. This command works from the current editable draft rather than from the defaults, so any wording the admins have already changed is kept, and the two options that were already live are left exactly as they are. It appends the SEO option to the service-path selector, adds the SEO track selector and its five questions ahead of the shared name and WhatsApp-number steps, publishes that draft, and creates a new editable draft. It is idempotent and makes no changes once the SEO path is live. If the draft holds admin edits that are not ready to go live, publish or revert them from the admin panel first — this command publishes the draft as it finds it.
+
+Afterwards, confirm the first live question offers all three options and submit one test lead through each SEO track.
 
 The optimized supplied logo and team photo live in `public/assets`; the large source originals are intentionally excluded from Git.
 

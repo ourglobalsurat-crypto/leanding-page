@@ -73,7 +73,8 @@ export async function PATCH(
         question.required !== existing.required ||
         question.isActive !== existing.is_active ||
         question.config.systemRole !== existingRole ||
-        question.config.flow !== existing.config.flow;
+        question.config.flow !== existing.config.flow ||
+        question.config.track !== existing.config.track;
       if (structureChanged) {
         return jsonError(
           "This is a core form question. Edit its wording without changing its key, type, path, or required/visible settings.",
@@ -81,12 +82,16 @@ export async function PATCH(
         );
       }
 
+      // Both selectors drive branching off their option ids, so those ids and
+      // their order are fixed even though the wording stays editable.
       if (
-        existingRole === "flow_selector" &&
+        (existingRole === "flow_selector" || existingRole === "track_selector") &&
         !sameOptionStructure(existing.options ?? [], question.options)
       ) {
         return jsonError(
-          "The Lead Generation and D2C selector options cannot be added, removed, reordered, or replaced.",
+          existingRole === "flow_selector"
+            ? "The service-path selector options cannot be added, removed, reordered, or replaced."
+            : "The path-track selector options cannot be added, removed, reordered, or replaced.",
           400,
         );
       }
@@ -96,6 +101,7 @@ export async function PATCH(
       ? {
           ...question.config,
           flow: existing.config.flow,
+          track: existing.config.track,
           systemRole: existingRole,
         }
       : { ...question.config, systemRole: undefined };

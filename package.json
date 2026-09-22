@@ -11,6 +11,7 @@
     "db:setup": "tsx scripts/setup-db.ts",
     "db:publish-language-update": "tsx scripts/publish-language-update.ts",
     "db:publish-branching-form": "tsx scripts/publish-branching-questionnaire.ts",
+    "db:publish-seo-path": "tsx scripts/publish-seo-path.ts",
     "db:migrate-encrypt-leads": "tsx scripts/migrate-encrypt-leads.ts",
     "test:lead-crypto": "tsx scripts/test-lead-crypto.ts",
     "qa:e2e": "node scripts/qa.mjs",
@@ -19,6 +20,7 @@
     "qa:dashboard": "node scripts/qa-dashboard.mjs",
     "test:lead-deletion": "tsx scripts/test-lead-deletion.ts",
     "test:crm-forward": "tsx scripts/test-crm-forward.ts",
+    "test:seo-path": "tsx scripts/test-seo-path.ts",
     "crm:check": "tsx scripts/check-crm.ts",
     "qa:lead-deletion": "node scripts/qa-lead-deletion.mjs"
   },

@@ -17,6 +17,7 @@ const createdLeadIds = new Set();
 const qaRunId = Date.now().toString(36);
 const leadGenerationName = `QA Lead Generation ${qaRunId}`;
 const d2cGrowthName = `QA D2C Growth ${qaRunId}`;
+const seoName = `QA SEO ${qaRunId}`;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -198,6 +199,74 @@ try {
   assert(leadConversionEvents[0]?.growth_path === "lead_generation", "Lead Generation conversion event has the wrong growth path.");
   await page.screenshot({ path: path.join(outputDir, "thank-you-lead-generation.png"), fullPage: false });
 
+  // The SEO path branches a second time, into its own Lead Generation and D2C
+  // tracks. Start on the D2C track, answer a track-only question, then switch:
+  // that stale answer must be pruned before submission, the same way a stale
+  // path answer is.
+  await page.goto(`${baseUrl}/contact`, { waitUntil: "networkidle" });
+  await page.getByRole("radio", { name: /Rank higher on Google/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  assert(await page.getByRole("heading", { name: /What should Google search bring you/ }).isVisible(), "SEO branch did not open on its track selector.");
+  assert((await page.locator(".step-count").textContent())?.trim() === "02 / 08", "SEO progress does not use the eight-question visible path.");
+  await page.getByRole("radio", { name: /Online product sales/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByPlaceholder(/yourbusiness\.com/).fill("https://qa-seo.example");
+  await page.getByRole("button", { name: "Continue" }).click();
+  assert(await page.getByRole("heading", { name: /average monthly online revenue/ }).isVisible(), "SEO D2C track did not open.");
+  await page.getByRole("radio", { name: /₹1–5 lakh/ }).click();
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("radio", { name: /Calls and enquiries/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  assert(await page.getByRole("heading", { name: /Which area do you want to rank in on Google/ }).isVisible(), "SEO Lead Generation track did not open after switching tracks.");
+  await page.getByRole("radio", { name: /Gujarat/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("radio", { name: /worked with a freelancer/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("radio", { name: /₹15,000–₹30,000/ }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByPlaceholder("Enter your full name").fill(seoName);
+  await page.getByRole("button", { name: "Continue" }).click();
+  const seoPhone = "9876543212";
+  await page.getByPlaceholder("Enter your WhatsApp number").fill(seoPhone);
+  await page.locator(".consent-row input").check();
+
+  const seoResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/leads") && response.request().method() === "POST");
+  await page.getByRole("button", { name: /Send my details/ }).click();
+  const seoResponse = await seoResponsePromise;
+  const seoResult = await seoResponse.json();
+  rememberCreatedLead(seoResult);
+  assert(seoResponse.status() === 201 && seoResult.ok, `SEO submission failed with ${seoResponse.status()}.`);
+
+  const seoAnswers = seoResponse.request().postDataJSON()?.answers ?? {};
+  assert(seoAnswers.growth_path === "seo", "SEO submission has the wrong growth path.");
+  assert(seoAnswers.seo_track === "lead_generation", "SEO submission has the wrong track.");
+  assert(
+    JSON.stringify(Object.keys(seoAnswers).sort()) === JSON.stringify([
+      "full_name",
+      "growth_path",
+      "phone",
+      "seo_experience",
+      "seo_lead_target_location",
+      "seo_monthly_budget",
+      "seo_track",
+      "seo_website_url",
+    ]),
+    "SEO submission kept an answer from the abandoned D2C track or omitted a visible answer.",
+  );
+
+  await page.waitForURL(`${baseUrl}/thank-you`, { timeout: 15000 });
+  assertThankYouUrl(page.url(), seoName, seoPhone);
+  await page.getByRole("heading", { name: "Your Details Have Been Received!" }).waitFor();
+  await page.waitForFunction(() => window.dataLayer?.some((entry) => entry.event === "generate_lead"));
+  const seoConversionEvents = await page.evaluate(() =>
+    window.dataLayer?.filter((entry) => entry.event === "generate_lead") ?? [],
+  );
+  assert(seoConversionEvents.length === 1, "SEO conversion event was missing or emitted more than once.");
+  assert(seoConversionEvents[0]?.growth_path === "seo", "SEO conversion event has the wrong growth path.");
+  await page.screenshot({ path: path.join(outputDir, "thank-you-seo.png"), fullPage: false });
+
   await page.goto(`${baseUrl}/${adminSlug}/login`, { waitUntil: "networkidle" });
   await page.locator("#admin-email").fill(process.env.ADMIN_EMAIL);
   await page.locator("#admin-password").fill(process.env.ADMIN_PASSWORD);
@@ -206,6 +275,7 @@ try {
   await page.getByRole("heading", { name: "Lead pulse" }).waitFor();
   assert(await page.getByText(leadGenerationName, { exact: true }).isVisible(), "Lead Generation submission did not appear in the dashboard.");
   assert(await page.getByText(d2cGrowthName, { exact: true }).isVisible(), "D2C submission did not appear in the dashboard.");
+  assert(await page.getByText(seoName, { exact: true }).isVisible(), "SEO submission did not appear in the dashboard.");
   await page.screenshot({ path: path.join(outputDir, "admin-dashboard.png"), fullPage: true });
 
   await page.getByRole("link", { name: `View ${leadGenerationName}` }).click();

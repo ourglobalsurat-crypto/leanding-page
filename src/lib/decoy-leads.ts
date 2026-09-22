@@ -40,7 +40,7 @@ const CITIES = [
 const SOURCES = ["facebook", "direct", "google", "instagram", "referral"];
 const STATUSES = ["new", "contacted", "qualified", "won", "not_interested"];
 const LANGUAGES = ["en", "hi", "gu"];
-const GROWTH_PATHS = ["lead_generation", "d2c_growth"];
+const GROWTH_PATHS = ["lead_generation", "d2c_growth", "seo"];
 const BUDGETS = ["under_1_lakh", "1_3_lakh", "3_5_lakh", "above_5_lakh"];
 const EMAIL_DOMAINS = ["gmail.com", "yahoo.in", "outlook.com", "rediffmail.com"];
 

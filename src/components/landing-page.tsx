@@ -30,12 +30,11 @@ import {
   text,
 } from "@/lib/copy";
 import {
-  getSelectedGrowthPath,
+  getExpectedQuestionCount,
   getVisibleQuestions,
   pruneHiddenAnswers,
 } from "@/lib/questionnaire-flow";
 import {
-  growthPaths,
   locales,
   type Locale,
   type PublicQuestion,
@@ -286,17 +285,7 @@ function GrowthCheck({
   const questions = getVisibleQuestions(questionnaire.questions, answers);
   const currentQuestion = questions[step];
   const isLast = step === questions.length - 1;
-  const selectedGrowthPath = getSelectedGrowthPath(questionnaire.questions, answers);
-  const expectedQuestionCount = selectedGrowthPath
-    ? questions.length
-    : Math.max(
-        questions.length,
-        ...growthPaths.map((growthPath) =>
-          questionnaire.questions.filter(
-            (question) => !question.config.flow || question.config.flow === growthPath,
-          ).length,
-        ),
-      );
+  const expectedQuestionCount = getExpectedQuestionCount(questionnaire.questions, answers);
   const progress = expectedQuestionCount ? ((step + 1) / expectedQuestionCount) * 100 : 0;
 
   const moveFocus = () => {

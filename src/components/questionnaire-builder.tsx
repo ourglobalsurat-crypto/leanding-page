@@ -18,9 +18,14 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { languageNames } from "@/lib/copy";
 import {
+  growthPathLabels,
+  growthPaths,
+  growthTrackLabels,
+  growthTracks,
   locales,
   questionTypes,
   type GrowthPath,
+  type GrowthTrack,
   type Locale,
   type PublicQuestion,
   type PublicQuestionnaire,
@@ -45,13 +50,22 @@ const typeLabels: Record<QuestionType, string> = {
 const choiceTypes = new Set<QuestionType>(["single_choice", "multi_choice", "dropdown"]);
 
 const flowLabels: Record<"all" | GrowthPath, string> = {
-  all: "Both paths",
-  lead_generation: "Lead Generation",
-  d2c_growth: "D2C Growth",
+  all: "All paths",
+  ...growthPathLabels,
 };
 
 function questionFlowLabel(question: PublicQuestion) {
-  return flowLabels[question.config.flow ?? "all"];
+  const flow = flowLabels[question.config.flow ?? "all"];
+  const track = question.config.track;
+  return track ? `${flow} · ${growthTrackLabels[track]}` : flow;
+}
+
+/** Only a path that branches again can have its questions limited to a track. */
+function pathHasTracks(questions: readonly PublicQuestion[], flow: GrowthPath | undefined) {
+  if (!flow) return false;
+  return questions.some(
+    (question) => question.config.systemRole === "track_selector" && question.config.flow === flow,
+  );
 }
 
 function blankLocalized() {
@@ -92,7 +106,10 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const editingIsSystemQuestion = Boolean(editing?.config.systemRole);
-  const editingIsFlowSelector = editing?.config.systemRole === "flow_selector";
+  const editingIsBranchSelector =
+    editing?.config.systemRole === "flow_selector" ||
+    editing?.config.systemRole === "track_selector";
+  const editingPathHasTracks = pathHasTracks(questions, editing?.config.flow);
 
   // A Next.js server refresh is the external source of truth after a mutation.
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -141,13 +158,29 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
   }
 
   function changeFlow(value: "all" | GrowthPath) {
+    const flow = value === "all" ? undefined : value;
     setEditing((current) =>
       current
         ? {
             ...current,
             config: {
               ...current.config,
-              flow: value === "all" ? undefined : value,
+              flow,
+              track: pathHasTracks(questions, flow) ? current.config.track : undefined,
+            },
+          }
+        : current,
+    );
+  }
+
+  function changeTrack(value: "all" | GrowthTrack) {
+    setEditing((current) =>
+      current
+        ? {
+            ...current,
+            config: {
+              ...current.config,
+              track: value === "all" ? undefined : value,
             },
           }
         : current,
@@ -214,6 +247,13 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
       questions[target].config.systemRole === "flow_selector"
     ) {
       setError("The service-path selector must stay as the first question.");
+      return;
+    }
+    if (
+      questions[index].config.systemRole === "track_selector" ||
+      questions[target].config.systemRole === "track_selector"
+    ) {
+      setError("A path-track selector must stay as the first question of its path.");
       return;
     }
     const reordered = [...questions];
@@ -301,7 +341,8 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
               <div className="editor-settings-grid">
                 <label>Question key<input value={editing.key} disabled={editingIsSystemQuestion} title={editingIsSystemQuestion ? "The internal key is fixed for this core question" : undefined} onChange={(event) => setEditing({ ...editing, key: event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })} required pattern="[a-z0-9_]+" /></label>
                 <label>Answer type<select value={editing.type} disabled={editingIsSystemQuestion} title={editingIsSystemQuestion ? "The answer type is fixed for this core question" : undefined} onChange={(event) => changeType(event.target.value as QuestionType)}>{questionTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}</select></label>
-                <label>Form path<select value={editing.config.flow ?? "all"} disabled={editingIsSystemQuestion} title={editingIsSystemQuestion ? "Core questions are shared by both paths" : undefined} onChange={(event) => changeFlow(event.target.value as "all" | GrowthPath)}><option value="all">Both paths</option><option value="lead_generation">Lead Generation only</option><option value="d2c_growth">D2C Growth only</option></select></label>
+                <label>Form path<select value={editing.config.flow ?? "all"} disabled={editingIsSystemQuestion} title={editingIsSystemQuestion ? "Core questions are shared by every path" : undefined} onChange={(event) => changeFlow(event.target.value as "all" | GrowthPath)}><option value="all">All paths</option>{growthPaths.map((path) => <option key={path} value={path}>{growthPathLabels[path]} only</option>)}</select></label>
+                <label>Path track<select value={editing.config.track ?? "all"} disabled={editingIsSystemQuestion || !editingPathHasTracks} title={editingIsSystemQuestion ? "Core questions are shared by every track" : editingPathHasTracks ? undefined : "This path does not branch further"} onChange={(event) => changeTrack(event.target.value as "all" | GrowthTrack)}><option value="all">All tracks</option>{growthTracks.map((track) => <option key={track} value={track}>{growthTrackLabels[track]} only</option>)}</select></label>
                 <label className="editor-check"><input type="checkbox" checked={editing.required} disabled={editingIsSystemQuestion} onChange={(event) => setEditing({ ...editing, required: event.target.checked })} /><span><Check size={13} /></span> Required answer</label>
                 <label className="editor-check"><input type="checkbox" checked={editing.isActive} disabled={editingIsSystemQuestion} onChange={(event) => setEditing({ ...editing, isActive: event.target.checked })} /><span><Check size={13} /></span> Show on form</label>
               </div>
@@ -318,12 +359,12 @@ export function QuestionnaireBuilder({ questionnaire }: { questionnaire: PublicQ
 
               {choiceTypes.has(editing.type) && (
                 <div className="editor-options">
-                  <div className="editor-section-title"><div><h3>Answer options</h3><p>{editingIsFlowSelector ? `Edit the ${languageNames[editorLocale]} wording. The two form paths are fixed.` : `Edit the ${languageNames[editorLocale]} text for each choice.`}</p></div>{!editingIsFlowSelector && <button type="button" onClick={() => setEditing({ ...editing, options: [...editing.options, makeOption(editing.options.length + 1)] })}><Plus size={15} /> Add option</button>}</div>
+                  <div className="editor-section-title"><div><h3>Answer options</h3><p>{editingIsBranchSelector ? `Edit the ${languageNames[editorLocale]} wording. The branches themselves are fixed.` : `Edit the ${languageNames[editorLocale]} text for each choice.`}</p></div>{!editingIsBranchSelector && <button type="button" onClick={() => setEditing({ ...editing, options: [...editing.options, makeOption(editing.options.length + 1)] })}><Plus size={15} /> Add option</button>}</div>
                   {editing.options.map((option, index) => (
                     <div className="editor-option-row" key={option.id}>
                       <span>{String(index + 1).padStart(2, "0")}</span>
                       <div><input value={option.label[editorLocale]} onChange={(event) => updateOption(index, "label", event.target.value)} placeholder={`${languageNames[editorLocale]} option label`} required={editorLocale === "en"} /><input value={option.description?.[editorLocale] ?? ""} onChange={(event) => updateOption(index, "description", event.target.value)} placeholder="Small explanation (optional)" /></div>
-                      <button type="button" aria-label="Remove option" disabled={editingIsFlowSelector || editing.options.length <= 2} title={editingIsFlowSelector ? "The two form paths cannot be removed" : undefined} onClick={() => setEditing({ ...editing, options: editing.options.filter((_, optionIndex) => optionIndex !== index) })}><Trash2 size={16} /></button>
+                      <button type="button" aria-label="Remove option" disabled={editingIsBranchSelector || editing.options.length <= 2} title={editingIsBranchSelector ? "A branch option cannot be removed" : undefined} onClick={() => setEditing({ ...editing, options: editing.options.filter((_, optionIndex) => optionIndex !== index) })}><Trash2 size={16} /></button>
                     </div>
                   ))}
                 </div>

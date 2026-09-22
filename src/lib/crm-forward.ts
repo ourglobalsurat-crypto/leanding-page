@@ -1,4 +1,4 @@
-import type { GrowthPath, Locale, PublicQuestion } from "@/lib/types";
+import { growthPathLabels, type GrowthPath, type Locale, type PublicQuestion } from "@/lib/types";
 
 // Deliberately no `import "server-only"` here, for the same reason as
 // src/lib/lead-crypto.ts: scripts/test-crm-forward.ts imports this module via
@@ -44,8 +44,7 @@ const LIMITS = { name: 120, phone: 35, email: 254, message: 4_000, field: 1_000 
 
 const languageNames: Record<Locale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
 const growthPathNames: Record<GrowthPath | "general", string> = {
-  lead_generation: "Lead Generation",
-  d2c_growth: "D2C Growth",
+  ...growthPathLabels,
   general: "General",
 };
 
