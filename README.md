@@ -17,7 +17,7 @@ A mobile-first Meta ads landing page and lead desk for Global Surat. The public 
 - Draft-and-publish questionnaire builder with add, edit, hide, delete, and reorder controls
 - Short text, long text, email, phone, number, date, dropdown, single choice, checkboxes, yes/no, and rating question types
 - Versioned forms and answer snapshots, so old leads keep the exact question text and options they answered
-- Optional server-side forwarding of every stored lead into the external Leadgen CRM, with retries and idempotent delivery
+- Server-side forwarding of every stored lead and every answer into the external Leadgen CRM, using the vendor connector, with retries and idempotent delivery
 - Neon Postgres persistence, server-side validation, signed sessions, password hashing, rate limits, honeypot protection, idempotent submissions, and security headers
 
 ## Permanent lead deletion
@@ -86,7 +86,8 @@ The setup script is idempotent. Running it again updates the configured admin pa
 | `LEAD_INDEX_PASSPHRASE` | Separate passphrase that only powers admin search by exact phone/email - cannot decrypt anything on its own. See [Lead data encryption](#lead-data-encryption) |
 | `LEAD_EXPORT_REAL_PASSPHRASE` | Opens a lead export containing the real leads, and typed into "Add content" to produce one. See [Lead export and the decoy file](#lead-export-and-the-decoy-file) |
 | `LEAD_EXPORT_DECOY_PASSPHRASE` | Opens the export that the plain **Export CSV** button produces, which contains invented leads |
-| `CRM_LEAD_FORM_URL` | Optional. The Leadgen CRM connection link, including its `?form=` token. Set it to mirror every stored lead into the CRM; unset disables forwarding. See [External CRM forwarding](#external-crm-forwarding) |
+| `CRM_LEAD_FORM_URL` | Optional. Overrides the built-in Leadgen connection link, so it can be rotated without a code change. See [External CRM forwarding](#external-crm-forwarding) |
+| `CRM_SITE_ORIGIN` | Optional. The site origin the CRM connector reports. Defaults to `https://global-surat.vercel.app`; set it when the site moves domain |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Digits-only WhatsApp number including country code |
 | `NEXT_PUBLIC_CONTACT_PHONE` | Display phone number |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Display contact email |
@@ -237,17 +238,31 @@ GTM Preview and Tag Assistant frame the site, so they are blocked by `frame-ance
 
 ## External CRM forwarding
 
-Every stored lead is also mirrored into the external Leadgen CRM at `leadgen.globalsurat.com`, so the sales team can work leads there instead of only in the lead desk. Set `CRM_LEAD_FORM_URL` to the connection link the CRM gives you - the one behind its **Send an enquiry** button, including the `?form=` token - and forwarding turns itself on. Leave it unset and nothing is sent anywhere; the lead desk is unaffected either way.
+Every stored lead is also mirrored into the external Leadgen CRM at `leadgen.globalsurat.com`, so the sales team can work leads there as well as in the lead desk. Every answer the visitor gave travels with it, not just the contact details.
 
-**The `?form=` token is a credential.** Anyone holding it can post leads into your CRM account. Keep it in `.env.local` and in your host's environment settings, never in a commit and never in client-side code. Rotate it in the CRM if it leaks.
+This works out of the box: the connection link is built into `src/lib/crm-lead.ts`, so there is no environment variable to forget and no way for forwarding to be silently off.
+
+### The connection link is not a secret
+
+The `?form=` token is a **public, write-only form key**. The CRM's own browser connector puts the identical value in page HTML, and the vendor's file says so in its first comment: *"This is not a CRM login key."* It cannot read anything out of the CRM; it can only add an enquiry.
+
+It does mean anyone who copies it can post junk leads into your CRM, exactly as anyone can type junk into a public contact form. If that happens, generate a new link in **Leadgen → Settings → Website Leads** and either update `DEFAULT_FORM_LINK` in `src/lib/crm-lead.ts` or set `CRM_LEAD_FORM_URL`, which overrides it without a code change.
 
 ### How it works
 
-The CRM ships a browser connector (`assets/lead-form.js`) that draws its own enquiry form. This site deliberately does not use it. That script binds a capturing `submit` listener and calls `stopImmediatePropagation()`, which would break this app's own React submit handler, and it reads answers off mounted `<input name="...">` elements - but the public form asks one question at a time, so most inputs are unmounted by the last step. The CSP in `next.config.ts` would also block its request, because `connect-src` allows only `'self'` and the Google Tag Manager origins.
+`src/lib/lead-client.mjs` is the vendor's own connector, downloaded from `leadgen.globalsurat.com/assets/lead-client.mjs` and **kept byte for byte unmodified** so it can be replaced wholesale when the CRM publishes a new version. It owns the wire protocol: it validates the form link, takes a single-use challenge, posts the enquiry, and sets the `Origin` header that the CRM expects from a server (a browser sets that header by itself). `src/lib/lead-client.d.mts` adds the types it ships without.
 
-Instead `src/lib/crm-forward.ts` posts to the same JSON endpoint from the server, and `src/app/api/leads/route.ts` calls it inside Next's `after()` - **after** the lead is committed to Postgres and the visitor's response has been sent. The JSON endpoint (`website-leads.php`) is derived from the link you paste, exactly as the connector derives it from its own script URL.
+The CRM also publishes a second script, `assets/lead-form.js`, which draws its own enquiry form in the browser. This site deliberately does not use that one: it binds a capturing `submit` listener and calls `stopImmediatePropagation()`, which would kill this app's React submit handler and stop leads reaching the database, and it reads answers off mounted `<input name="...">` elements — but the public form asks one question at a time, so most inputs are unmounted by the final step. The CSP in `next.config.ts` would block it in any case.
 
-Each send takes a fresh single-use challenge with a `GET`, then posts the lead. The lead's own UUID travels as the CRM's `request_id`, which is what the CRM deduplicates on, so the three retry attempts (1s and 4s apart, 15s timeout each) cannot create duplicate CRM records. Contact details fill the CRM's name, phone and email fields; every other answer goes into its per-question fields and is repeated in the enquiry body, with option ids rendered as their English labels. The lead's UUID is included as a **Lead ID** field so a CRM record can be matched back to the full answer history and notes in the lead desk.
+`src/lib/crm-lead.ts` maps a stored lead onto the connector and `src/app/api/leads/route.ts` calls it inside Next's `after()` — **after** the lead is committed to Postgres and the visitor's response has been sent.
+
+Name, phone and email fill the CRM's own fields. Every other answer becomes a per-question field and is repeated in the enquiry body, with option ids rendered as their English labels (`google_ads` shows as "Google Ads") and duplicate labels kept apart rather than overwriting each other. Service path, language, campaign, ad source and ad medium are added alongside, and the lead's UUID travels as a **Lead ID** field so a CRM record can be matched back to the full answer history and notes in the lead desk.
+
+The connector does not retry; that is `crm-lead.ts`'s job. It attempts three times, 1s and 4s apart, always reusing the lead's UUID as the connector's `requestId` — which is what the CRM deduplicates on, so a retry can never produce a second CRM record.
+
+### Site origin
+
+The connector requires the site origin on a server and rejects a page URL belonging to any other origin. It defaults to `https://global-surat.vercel.app`; set `CRM_SITE_ORIGIN` when the site moves to another domain. The page path is taken from the request's `Referer` but the origin is always pinned to the configured value, so a spoofed or cross-site `Referer` cannot change what the CRM is told.
 
 ### Checking the connection
 
@@ -255,13 +270,11 @@ Each send takes a fresh single-use challenge with a `GET`, then posts the lead. 
 npm run crm:check
 ```
 
-This fetches the CRM's form configuration and stops there - it never posts, so it cannot create a CRM record. It reports `OK` with the form's name when the token is valid and the CRM is reachable, `OFF` when `CRM_LEAD_FORM_URL` is unset, and `FAIL` with the reason when the link or token is wrong. It prints only the first characters of the token, never the whole value.
-
-**It checks the environment it runs in, which locally means `.env.local`.** Setting the variable there does nothing for your deployed site: hosts keep their own environment, and Vercel bakes variables in at build time, so a variable added after a deployment does not reach it until you redeploy. To check production, submit a lead and read the deployed logs - an unset variable logs `CRM forwarding is OFF` once per server process.
+This validates the link through the vendor connector and fetches the CRM's form configuration, then stops — it never posts, so it cannot create a CRM record. It reports `OK` with the form's name when the link works and the CRM is reachable, or `FAIL` with the reason. It prints only the first characters of the token.
 
 ### When it fails
 
-The CRM is a mirror, never the system of record. A CRM that is slow, unreachable or misconfigured cannot fail a submission, delay the thank-you page, or lose a lead - the lead is already in the database before forwarding starts. After three failed attempts the server logs `CRM forwarding failed for lead <uuid>` with the lead's ID and no contact details; look that ID up in the lead desk and enter it in the CRM by hand. A lead with no name or no phone number is skipped without being sent, because the CRM rejects those.
+The CRM is a mirror, never the system of record. A CRM that is slow, unreachable or misconfigured cannot fail a submission, delay the thank-you page, or lose a lead — the lead is already in the database before forwarding starts. After three failed attempts the server logs `CRM forwarding failed for lead <uuid>` with the lead's ID and no contact details; look that ID up in the lead desk and enter it in the CRM by hand. A lead with no name or no phone number is skipped without being sent, because the connector rejects those.
 
 > Forwarding puts a **second, unencrypted copy** of each lead's name, phone number and email address inside the CRM. That is the point of the integration, but it does mean the protection described in [Lead data encryption](#lead-data-encryption) covers this database only, not the CRM. Whoever can log into the CRM can read every forwarded lead's contact details.
 
@@ -273,11 +286,11 @@ npm run lint
 npm run build
 npm run test:lead-crypto
 npm run test:export-unlock
-npm run test:crm-forward
+npm run test:crm-lead
 npm run test:seo-path
 ```
 
-`test:crm-forward` stubs the network - it never contacts the real CRM and never creates a CRM record. `test:seo-path` checks the SEO path, both of its tracks, and rehearses `db:publish-seo-path` against an in-memory draft, so neither one touches a database.
+`test:crm-lead` stubs the connector - it never contacts the real CRM and never creates a CRM record. `test:seo-path` checks the SEO path, both of its tracks, and rehearses `db:publish-seo-path` against an in-memory draft, so neither one touches a database.
 
 For the browser flow, start the app and run:
 

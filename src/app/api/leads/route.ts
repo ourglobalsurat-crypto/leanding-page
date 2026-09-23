@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { after } from "next/server";
 
-import { forwardLeadToCrm, landingPageUrl } from "@/lib/crm-forward";
+import { crmPageUrl, crmSiteOrigin, sendLeadToCrm } from "@/lib/crm-lead";
 import { getSql } from "@/lib/db";
 import {
   blindIndex,
@@ -30,20 +30,6 @@ import type {
 import { leadSubmissionSchema, validateQuestionAnswer } from "@/lib/validation";
 
 export const runtime = "nodejs";
-
-// An unset CRM_LEAD_FORM_URL stores leads here and forwards nothing, which
-// looks exactly like a working integration until someone opens the CRM and
-// finds it empty. Say so in the logs - once per process, not once per lead.
-let warnedCrmDisabled = false;
-function warnCrmDisabledOnce() {
-  if (warnedCrmDisabled) return;
-  warnedCrmDisabled = true;
-  console.warn(
-    "CRM forwarding is OFF: CRM_LEAD_FORM_URL is not set. Leads are being stored in this "
-      + "database only and no lead is reaching the CRM. Set that variable in the hosting "
-      + "environment (Vercel: Settings -> Environment Variables) and redeploy.",
-  );
-}
 
 type QuestionRow = {
   id: string;
@@ -292,23 +278,23 @@ export async function POST(request: Request) {
     // must never hold up the visitor's thank-you page or fail their submission.
     after(async () => {
       try {
-        const result = await forwardLeadToCrm({
+        const origin = crmSiteOrigin();
+        const result = await sendLeadToCrm({
           leadId,
           name,
           phone,
           email,
           language: payload.language,
           growthPath,
-          pageUrl: landingPageUrl(request),
+          origin,
+          pageUrl: crmPageUrl(request, origin),
           utm,
           answers: validatedAnswers,
           contactKeys: [nameAnswer, phoneAnswer, emailAnswer]
             .map((answer) => answer?.question.key)
             .filter((key): key is string => Boolean(key)),
         });
-        if (result.status === "disabled") {
-          warnCrmDisabledOnce();
-        } else if (result.status === "skipped") {
+        if (result.status === "skipped") {
           console.warn(`Lead ${leadId} was not sent to the CRM: ${result.reason}`);
         }
       } catch (error) {
